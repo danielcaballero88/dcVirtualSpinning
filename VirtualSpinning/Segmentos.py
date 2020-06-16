@@ -15,15 +15,14 @@ class Segmentos(object):
         self.l0s = []  # longitudes iniciales
 
     def __len__(self):
-        """
-        para poder hacer len(self)
-        """
+        """ para poder hacer len(self) """
         return self.num
 
+    def __getitem__(self, item):
+        return self.nods[item]
+
     def add_segmento(self, nods, coords):
-        """
-        agrego un segmento al conjunto
-        """
+        """ agrego un segmento al conjunto """
         self.nods.append(nods)
         try:
             longitud, angulo = self.calcular_long_y_theta(nods, coords)
@@ -39,22 +38,14 @@ class Segmentos(object):
         self.l0s[j] = long
 
     def mover_nodo(self, j, n, coors, new_r):
-        """ mueve un nodo del segmento
-        coors es una lista, es un objeto mutable
-        por lo que al salir de este metodo se va ver modificada
-        es decir, es un puntero
-        j es el indice del segmento a moverle un nodo
-        n es el indice del nodo para el segmento: 0 es inicial, 1 es final """
+        """ mueve un nodo del segmento """
         assert n in (0, 1)
         nglobal = self.nods[j][n]
         coors[nglobal] = new_r  # se lo modifica resida donde resida (normalmente en un objeto nodos)
         self.actualizar_segmento(j, coors)
 
     def cambiar_conectividad(self, j, new_con, coors):
-        """ se modifica la conectividad de un segmento (j) de la lista
-        se le da la nueva conectividad new_con
-        y por lo tanto se vuelve a calcular su angulo y longitud
-        (util para dividir segmentos en 2) """
+        """ se modifica la conectividad de un segmento (j) de la lista """
         self.nods[j] = new_con
         longitud, angulo = self.calcular_long_y_theta(new_con, coors)
         self.ths[j] = angulo
