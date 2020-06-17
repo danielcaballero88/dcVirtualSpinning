@@ -1,6 +1,6 @@
 # Global imports
 import numpy as np
-from matplotlib import cm, pyplot as plt
+from matplotlib import pyplot as plt
 import matplotlib.colors as colors
 # Local imports
 from .Fibras import Fibras
@@ -56,6 +56,11 @@ class Mallasim(object):
             linea = next(fid)
             T11, T21, T12, T22 = [float(item) for item in linea.split()]
             Tmacro = np.array([[T11, T12], [T21, T22]])
+        else:
+            status_deformed = False
+            F11, F21, F12, F22 = 1.0, 0.0, 0.0, 1.0
+            Fmacro = np.array([[F11, F12], [F21, F22]])
+            Tmacro = np.array([[0.0, 0.0], [0.0, 0.0]])
         # luego busco coordenadas
         target = "*coordenadas"
         ierr = find_string_in_file(fid, target, True)
@@ -429,7 +434,7 @@ class Mallasim(object):
             #     c = "k"
             # --
             ax.plot([x0, x1], [y0, y1], ls="-", linewidth=linewidth, c=c)
-        print
+        print()
         if barracolor:
             sm._A = []
             fig.colorbar(sm)

@@ -583,7 +583,7 @@ class Mallacom(object):
             dString = "{:12d}".format(f)  # indice
             dString += "{:17.8e}{:17.8e}{:17.8e}".format(self.fibs.dls[f], self.fibs.ds[f],
                                                          self.fibs.dthetas[f])  # dl, d y dtheta
-            dString += "{:12d}".format(len(fcon))  # indice
+            dString += "{:12d}".format(len(fcon))  # numero de segmentos en la fibra
             dString += "".join("{:12d}".format(val) for val in fcon) + "\n"  # conectividad
             fid.write(dString)
         # termino con las capas: indice y fibras (conectividad):
@@ -591,7 +591,7 @@ class Mallacom(object):
         fid.write(dString)
         for c, ccon in enumerate(self.caps.con):
             dString = "{:12d}".format(c)  # indice
-            dString += "{:12d}".format(len(ccon))  # indice
+            dString += "{:12d}".format(len(ccon))  # numero de fibras en la capa
             dString += "".join("{:12d}".format(val) for val in ccon) + "\n"  # conectividad
             fid.write(dString)
         # ---
