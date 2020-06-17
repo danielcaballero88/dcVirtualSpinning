@@ -8,7 +8,6 @@ from VirtualSpinning.Capas import Capas
 from VirtualSpinning.Fibras import Fibras
 from VirtualSpinning.Segmentos import Segmentos
 from VirtualSpinning.Nodos import Nodos
-from VirtualSpinning.aux import iguales
 from VirtualSpinning.aux import calcular_interseccion_entre_segmentos as calcular_interseccion
 from VirtualSpinning.aux import find_string_in_file
 from VirtualSpinning.aux import calcular_longitud_de_segmento
@@ -46,7 +45,7 @@ class Mallacom(object):
         self.bordes_s.add_segmento([2, 3], self.bordes_n.r)
         self.bordes_s.add_segmento([3, 0], self.bordes_n.r)
 
-    def make_capa2(self, dl=None, d=None, dtheta=None, volfraction=None, orient_distr=None):
+    def make_capa(self, dl=None, d=None, dtheta=None, volfraction=None, orient_distr=None):
         """
         armo una capa con fibras, todas van a armarse con los
         mismos parmetros dl y dtheta (se debe modificar para usar distribuciones)
@@ -78,7 +77,7 @@ class Mallacom(object):
         vols = 0.  # volumen de solido actual
         while True:
             i += 1
-            j = self.make_fibra2(dl, d, dtheta, orient_distr)
+            j = self.make_fibra(dl, d, dtheta, orient_distr)
             if j == -1:
                 i -= 1
             else:
@@ -164,7 +163,7 @@ class Mallacom(object):
             raise ValueError
         return theta
 
-    def make_fibra2(self, dl, d, dtheta, orient_distr=None):
+    def make_fibra(self, dl, d, dtheta, orient_distr=None):
         """ tengo que armar una lista de segmentos
         nota: todos los indices (de nodos, segmentos y fibras)
         son globales en la malla, cada nodo nuevo tiene un indice +1 del anterior

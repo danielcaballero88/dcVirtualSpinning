@@ -14,7 +14,7 @@ def main():
     ncaps = 2
     mc = Mallacom(L, Dm, volfrac, dl, devang, fundisor=None)
     for i in range(1, ncaps + 1):
-        mc.make_capa2(dl, Dm, devang, volfrac, orient_distr=fundisor)
+        mc.make_capa(dl, Dm, devang, volfrac, orient_distr=fundisor)
     mc.guardar_en_archivo('malla_test_basic.txt')
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(111)
