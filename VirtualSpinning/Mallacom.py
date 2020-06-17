@@ -15,7 +15,7 @@ from VirtualSpinning.aux import calcular_longitud_de_segmento
 from VirtualSpinning.aux import calcular_angulo_de_segmento
 
 
-class Malla(object):
+class Mallacom(object):
     def __init__(self, L, Dm, volfrac, ls, devangmax, fundisor=None):
         self.L = L
         self.Dm = Dm  # diametro medio de fibras y espesor de las capas

@@ -4,19 +4,22 @@ class Fibras(object):
      :segs: conectividad como lista de listas de segmentos (solo los indices)
      :diams: lista de diametros con un valor por cada fibra
      """
-    def __init__(self):
-        self.segs = []  # conectividad (lista de listas de indices de segmentos)
-        self.diams = []
-        # self.l0s = []
-        # self.th = []
 
-    def add_fibra(self, segs, diam):
-        self.segs.append(segs)
-        self.diams.append(diam)
+    def __init__(self):
+        self.con = []  # conectividad: va a ser una lista de listas de segmentos (sus indices nada mas)
+        self.dls = []
+        self.ds = []
+        self.dthetas = []
+
+    def add_fibra(self, fib_con, dl, d, dtheta):
+        self.con.append(fib_con)
+        self.dls.append(dl)
+        self.ds.append(d)
+        self.dthetas.append(dtheta)
 
     def insertar_segmento(self, j, k, s):
         """ inserta un segmento en la conectividad de una fibra
         j: indice de la fibra
         k: indice donde se inserta el nuevo segmento
         s: indice del nuevo segmento para agregar a la conectividad """
-        self.segs[j].insert(k, s)
+        self.con[j].insert(k, s)
