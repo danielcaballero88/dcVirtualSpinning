@@ -1,4 +1,4 @@
-from numpy import pi as PI
+from numpy import pi
 from matplotlib import pyplot as plt
 from VirtualSpinning.Mallacom.Mallacom import Mallacom
 
@@ -9,7 +9,7 @@ def main():
     L = 50. * Dm
     fundisor = None
     dl = 5. * Dm
-    devang = 10. * PI / 180.
+    devang = 10. * pi / 180.
     volfrac = 0.1
     ncaps = 2
     mc = Mallacom(L, Dm, volfrac, dl, devang, fundisor=None)
