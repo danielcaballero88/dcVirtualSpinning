@@ -4,10 +4,10 @@ import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.colors as colors
 # Local Imports
-from VirtualSpinning.Capas import Capas
-from VirtualSpinning.Fibras import Fibras
-from VirtualSpinning.Segmentos import Segmentos
-from VirtualSpinning.Nodos import Nodos
+from .Capas import Capas
+from .Fibras import Fibras
+from .Segmentos import Segmentos
+from .Nodos import Nodos
 from VirtualSpinning.aux import calcular_interseccion_entre_segmentos as calcular_interseccion
 from VirtualSpinning.aux import find_string_in_file
 from VirtualSpinning.aux import calcular_longitud_de_segmento
@@ -29,9 +29,6 @@ class Mallacom(object):
         self.bordes_n = Nodos()  # lista de coordenadas con los 4 nodos del borde
         self.bordes_s = Segmentos()  # lista con los segmentos con los 4 nodos del borde
         self.calcular_marco()
-        self.pregraficado = False
-        self.fig = None
-        self.ax = None
 
     def calcular_marco(self):
         # agrego los 4 nodos
@@ -607,42 +604,42 @@ class Mallacom(object):
         # primero leo los parametros
         target = "*parametros"
         ierr = find_string_in_file(fid, target, True)
-        L = float(fid.next())
-        Dm = float(fid.next())
-        volfrac = float(fid.next())
+        L = float(next(fid))
+        Dm = float(next(fid))
+        volfrac = float(next(fid))
         if volfrac > 1.:
             volfrac = int(volfrac + .5)
-        ls = float(fid.next())
-        devangmax = float(fid.next())  # en grados
+        ls = float(next(fid))
+        devangmax = float(next(fid))  # en grados
         devangmax = devangmax * np.pi / 180.
         # luego busco coordenadas
         target = "*coordenadas"
         ierr = find_string_in_file(fid, target, True)
-        num_r = int(fid.next())
+        num_r = int(next(fid))
         coors = list()
         tipos = list()
         for i in range(num_r):
-            j, t, x, y = (float(val) for val in fid.next().split())
+            j, t, x, y = (float(val) for val in next(fid).split())
             tipos.append(int(t))
             coors.append([x, y])
         # luego los segmentos
         target = "*segmentos"
         ierr = find_string_in_file(fid, target, True)
-        num_s = int(fid.next())
+        num_s = int(next(fid))
         segs = list()
         for i in range(num_s):
-            j, n0, n1 = (int(val) for val in fid.next().split())
+            j, n0, n1 = (int(val) for val in next(fid).split())
             segs.append([n0, n1])
         # luego las fibras
         target = "*fibras"
         ierr = find_string_in_file(fid, target, True)
-        num_f = int(fid.next())
+        num_f = int(next(fid))
         fibs = list()
         dls = list()
         ds = list()
         dthetas = list()
         for i in range(num_f):
-            svals = fid.next().split()
+            svals = next(fid).split()
             j = int(svals[0])
             dl = float(svals[1])
             d = float(svals[2])
@@ -656,10 +653,10 @@ class Mallacom(object):
         # luego la capas
         target = "*capas"
         ierr = find_string_in_file(fid, target, True)
-        num_c = int(fid.next())
+        num_c = int(next(fid))
         caps = list()
         for c in range(num_c):
-            svals = fid.next().split()
+            svals = next(fid).split()
             j = int(svals[0])
             nfibsc = int(svals[1])
             ccon = [int(val) for val in svals[2:]]
@@ -716,9 +713,9 @@ class Mallacom(object):
         sm = plt.cm.ScalarMappable(cmap=mi_colormap, norm=plt.Normalize(vmin=0, vmax=nc - 1))
         # dibujo las fibras (los segmentos)
         # preparo las listas, una lista para cada fibra
-        xx = [list() for f in self.fibs.con]
-        yy = [list() for f in self.fibs.con]
-        grafs = list()
+        xx = [[] for f in self.fibs.con]
+        yy = [[] for f in self.fibs.con]
+        grafs = []
         for c, c_con in enumerate(self.caps.con):  # recorro las capas
             for f in c_con:  # recorro las fibra de la capa
                 f_con = self.fibs.con[f]

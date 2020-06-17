@@ -1,6 +1,6 @@
 from numpy import pi as PI
 from matplotlib import pyplot as plt
-from VirtualSpinning.Mallacom import Mallacom
+from VirtualSpinning.Mallacom.Mallacom import Mallacom
 
 
 def main():
@@ -21,6 +21,7 @@ def main():
     mc.pre_graficar_bordes(fig, ax)
     mc.pre_graficar_fibras(fig, ax, color_por="nada", byn=True, linewidth=1.5)
     plt.show()
+
 
 if __name__ == '__main__':
     main()
