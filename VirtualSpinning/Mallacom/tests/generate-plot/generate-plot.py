@@ -1,10 +1,19 @@
 from numpy import pi
 from matplotlib import pyplot as plt
+from pathlib import Path
 from VirtualSpinning.Mallacom.Mallacom import Mallacom
 
 
+CWD = Path.cwd()
+FILE = Path(__file__)
+DIR = FILE.parent
+
+
 def main():
-    print('Hi!, I\'m test basic!')
+    print('testing: Mallacom -> generate-plot')
+    print('CWD: ', CWD)
+    print('DIR: ', DIR)
+    print('__file__: ', FILE)
     Dm = 1.
     L = 50. * Dm
     fundisor = None
@@ -15,7 +24,8 @@ def main():
     mc = Mallacom(L, Dm, volfrac, dl, devang, fundisor=None)
     for i in range(1, ncaps + 1):
         mc.make_capa(dl, Dm, devang, volfrac, orient_distr=fundisor)
-    mc.guardar_en_archivo('malla_test_basic.txt')
+    archivo = DIR / 'malla_test_basic.txt'
+    mc.guardar_en_archivo(archivo)
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(111)
     mc.pre_graficar_bordes(fig, ax)

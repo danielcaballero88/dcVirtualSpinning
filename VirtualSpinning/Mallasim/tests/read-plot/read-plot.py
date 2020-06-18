@@ -1,11 +1,21 @@
 from matplotlib import pyplot as plt
+from pathlib import Path
 from VirtualSpinning.Mallasim.Mallasim import Mallasim
 from VirtualSpinning.Mallacom.Mallacom import Mallacom
 
 
+CWD = Path.cwd()
+FILE = Path(__file__)
+DIR = FILE.parent
+
+
 def main():
-    mc = Mallacom.leer_de_archivo('malla_test_basic.txt')
-    ms = Mallasim.leer_desde_archivo('malla_test_basic_i_s.txt')
+    print('testing: Mallacom -> read-plot')
+    print('CWD: ', CWD)
+    print('DIR: ', DIR)
+    print('__file__: ', FILE)
+    mc = Mallacom.leer_de_archivo(DIR / 'malla_test_basic.txt')
+    ms = Mallasim.leer_desde_archivo(DIR / 'malla_test_basic_i_s.txt')
     fig, ax = plt.subplots()
     mc.pre_graficar_fibras(fig, ax)
     ms.pre_graficar_bordes(fig, ax)

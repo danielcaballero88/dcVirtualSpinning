@@ -19,8 +19,8 @@ class Mallacom(object):
         self.L = L
         self.Dm = Dm  # diametro medio de fibras y espesor de las capas
         self.volfrac = volfrac  # si es float < 1 es volfrac, si es > 1 es num de fibras por capa
-        self.ls = ls
-        self.devangmax = devangmax
+        self.ls = ls  # longitud de segmento
+        self.devangmax = devangmax  # angulo maximo de desviacion entre segmentos
         self.fundisor = fundisor  # tiene que ser una funcion (or callable object) que devuelve un valor de orientacion
         self.caps = Capas()  # lista vacia
         self.fibs = Fibras()  # lista vacia
