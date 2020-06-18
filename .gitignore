@@ -1,8 +1,11 @@
 # Pycharm
 .idea/
 
+# vscode
+.vscode/
+
 # -- --------------------- --
-# -- Automatic from github -- 
+# -- Automatic from github --
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
