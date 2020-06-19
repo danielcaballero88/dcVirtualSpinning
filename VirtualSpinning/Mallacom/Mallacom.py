@@ -3,6 +3,7 @@ import csv
 import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.colors as colors
+import matplotlib.cm as cm
 # Local Imports
 from .Capas import Capas
 from .Fibras import Fibras
@@ -78,7 +79,6 @@ class Mallacom(object):
 
     def calcular_loco_de_una_fibra(self, f):
         """ calcula la longitud de contorno de una fibra """
-        nsegs = len(self.fibs.con[f])
         loco = 0.
         for seg in self.fibs.con[f]:
             n0, n1 = self.segs.con[seg]
@@ -487,13 +487,30 @@ class Mallacom(object):
                 writer.writerows(rows)
         return thetas, dth, conteo, frecs, pdf
 
-    def calcular_enrulamientos_de_interfibras(self):
-        """ calcular para todas las interfibras sus longitudes de contorno y
+    def calcular_enrulamientos_de_interfibras(self, rec_infbs_con=None):
+        """
+        Calcular para todas las interfibras sus longitudes de contorno y
         sus longitudes extremo a extremos (loco y lete)
-        y calcula el enrulamiento como lamr=loco/lete """
+        y calcula el enrulamiento como lamr=loco/lete
+        
+        Args:
+            rec_infbs_con: recorded interfibers conectivity, se utiliza para 
+
+        Returns:
+            lamr: lista con los valores de enrulamiento para las interfibras
+        """
+        
+        # inicio una lista vacia
         lamsr = []
-        infbs_con = self.calcular_conectividad_de_interfibras()
-        for infb_con in infbs_con:  # recorro las interfibras (fibras interectadas) del rve
+
+        # si no ingrese la conectividad, la calculo (ineficiente)
+        if rec_infbs_con is None:
+            infbs_con = self.calcular_conectividad_de_interfibras()
+        else: 
+            infbs_con = rec_infbs_con
+
+        # recorro las interfibras (fibras interectadas) del rve
+        for infb_con in infbs_con: 
             loco = 0.
             for s in infb_con:  # recorro los segmentos de cada interfibra
                 scon = self.segs.con[s]
@@ -507,6 +524,8 @@ class Mallacom(object):
             r_fin = self.nods.r[n_fin]
             lete = calcular_longitud_de_segmento(r_ini, r_fin)
             lamsr.append(loco / lete)
+
+        # return
         return lamsr
 
     def calcular_distribucion_de_enrulamiento_de_interfibras(self, rec_lamsr=None, lamr_min=None, lamr_max=None, n=10):
@@ -594,7 +613,7 @@ class Mallacom(object):
         fid = open(archivo, "r")
         # primero leo los parametros
         target = "*parametros"
-        ierr = find_string_in_file(fid, target, True)
+        _ierr = find_string_in_file(fid, target, True)
         L = float(next(fid))
         Dm = float(next(fid))
         volfrac = float(next(fid))
@@ -605,25 +624,25 @@ class Mallacom(object):
         devangmax = devangmax * np.pi / 180.
         # luego busco coordenadas
         target = "*coordenadas"
-        ierr = find_string_in_file(fid, target, True)
+        _ierr = find_string_in_file(fid, target, True)
         num_r = int(next(fid))
         coors = list()
         tipos = list()
         for i in range(num_r):
-            j, t, x, y = (float(val) for val in next(fid).split())
+            _j, t, x, y = (float(val) for val in next(fid).split())
             tipos.append(int(t))
             coors.append([x, y])
         # luego los segmentos
         target = "*segmentos"
-        ierr = find_string_in_file(fid, target, True)
+        _ierr = find_string_in_file(fid, target, True)
         num_s = int(next(fid))
         segs = list()
         for i in range(num_s):
-            j, n0, n1 = (int(val) for val in next(fid).split())
+            _j, n0, n1 = (int(val) for val in next(fid).split())
             segs.append([n0, n1])
         # luego las fibras
         target = "*fibras"
-        ierr = find_string_in_file(fid, target, True)
+        _ierr = find_string_in_file(fid, target, True)
         num_f = int(next(fid))
         fibs = list()
         dls = list()
@@ -631,7 +650,7 @@ class Mallacom(object):
         dthetas = list()
         for i in range(num_f):
             svals = next(fid).split()
-            j = int(svals[0])
+            _j = int(svals[0])
             dl = float(svals[1])
             d = float(svals[2])
             dtheta = float(svals[3])
@@ -643,12 +662,12 @@ class Mallacom(object):
             dthetas.append(dtheta)
         # luego la capas
         target = "*capas"
-        ierr = find_string_in_file(fid, target, True)
+        _ierr = find_string_in_file(fid, target, True)
         num_c = int(next(fid))
         caps = list()
         for c in range(num_c):
             svals = next(fid).split()
-            j = int(svals[0])
+            _j = int(svals[0])
             # _nfibsc = int(svals[1])  # unused
             ccon = [int(val) for val in svals[2:]]
             caps.append(ccon)
@@ -682,9 +701,11 @@ class Mallacom(object):
     def pre_graficar_capas(self, fig, ax, byn=True):
         nc = len(self.caps.con)
         if byn:
-            mi_colormap = plt.cm.gray
+            mi_colormap = cm.get_cmap('gray')
+            # mi_colormap = plt.cm.gray
         else:
-            mi_colormap = plt.cm.rainbow
+            # mi_colormap = plt.cm.rainbow
+            mi_colormap = cm.get_cmap('rainbow')
         sm = plt.cm.ScalarMappable(cmap=mi_colormap, norm=plt.Normalize(vmin=0, vmax=nc - 1))
         # dibujo las fibras (los segmentos)
         # preparo las listas, una lista para cada fibra
@@ -719,20 +740,28 @@ class Mallacom(object):
             cmap(np.linspace(minval, maxval, n)))
         return new_cmap
 
-    def pre_graficar_fibras(self, fig, ax, ncapas=None, lamr_min=None, lamr_max=None, byn=False, barracolor=True,
-                            color_por="nada", linewidth=2, colores_cm=None, ncolores_cm=20):
+    def pre_graficar_fibras(self, fig, ax, 
+                            ncapas=None, 
+                            lamr_min=None, lamr_max=None, 
+                            color_por="nada",
+                            byn=False, cmap='jet', barracolor=True,
+                            colores_cm=None, ncolores_cm=20,
+                            linewidth=2):
         lw = linewidth
         # preparo un mapa de colores mapeable por escalar
-        lamsr = self.calcular_enrulamientos()
         if byn:
-            mi_colormap = plt.cm.gray_r
+            mi_colormap = cm.get_cmap('gray_r')
             # lo trunco para que no incluya el cero (blanco puro que no hace contraste con el fondo)
             mi_colormap = self.truncate_colormap(mi_colormap, 0.2, 0.7)
+        elif colores_cm is not None:
+            mi_colormap = colors.LinearSegmentedColormap.from_list("mi_colormap", colores_cm, N=ncolores_cm)
         else:
-            mi_colormap = plt.cm.jet
+            mi_colormap = cm.get_cmap(cmap)  # default: jet
             if colores_cm is not None:
                 mi_colormap = colors.LinearSegmentedColormap.from_list("mi_colormap", colores_cm, N=ncolores_cm)
         if color_por == "lamr":
+            # calculo los enrulamientos
+            lamsr = self.calcular_enrulamientos()
             if lamr_min is None:
                 lamr_min = np.min(lamsr)
             if lamr_max is None:
@@ -791,25 +820,26 @@ class Mallacom(object):
             if color_por == "capa":
                 cbar.set_ticks(range(len(self.caps.con)))
 
-    def pre_graficar_interfibras(self, fig, ax, lamr_min=None, lamr_max=None, byn=False, barracolor=True,
-                                 color_por="nada", colormap="jet", colores_cm=None, ncolores_cm=20):
+    def pre_graficar_interfibras(self, fig, ax, 
+                                lamr_min=None, lamr_max=None, 
+                                color_por="nada",
+                                byn=False, colormap="jet", barracolor=True,
+                                colores_cm=None, ncolores_cm=20):
         # preparo un mapa de colores mapeable por escalar
+        # calculo las interfibras (conectividad)
         infbs_con = self.calcular_conectividad_de_interfibras()
-        lamsr = self.calcular_enrulamientos_de_interfibras()
         if byn:
-            mi_colormap = plt.cm.gray_r
+            # mi_colormap = plt.cm.gray_r
+            mi_colormap = cm.get_cmap('gray_r')
             # lo trunco para que no incluya el cero (blanco puro que no hace contraste con el fondo)
             mi_colormap = self.truncate_colormap(mi_colormap, 0.4, 1.0)
-        else:
-            if colores_cm is not None:
+        elif colores_cm is not None:
                 mi_colormap = colors.LinearSegmentedColormap.from_list("mi_colormap", colores_cm, N=ncolores_cm)
-            elif colormap == "jet":
-                mi_colormap = plt.cm.jet
-            elif colormap == "prism":
-                mi_colormap = plt.cm.prism
-            elif colormap == "Dark2":
-                mi_colormap = plt.cm.Dark2
+        else:
+            mi_colormap = cm.get_cmap(colormap)
         if color_por == "lamr":
+            # calculos los enrulamientos
+            lamsr = self.calcular_enrulamientos_de_interfibras()
             if lamr_min is None:
                 lamr_min = np.min(lamsr)
             if lamr_max is None:
@@ -826,12 +856,12 @@ class Mallacom(object):
         grafs = list()
         print("-")
         print("graficando interfibras")
-        pcc = 0.
         nif = float(len(infbs_con))
         pctp = np.arange(0., 101., 10.).tolist()
         pcpd = np.zeros(len(pctp), dtype=bool).tolist()
         for i, infb_con in enumerate(infbs_con):  # recorro las interfibras
-            pc = round(float(i) / nif * 100., 0)
+            # preparo algo para ir imprimiendo el porcentaje de progreso
+            pc = round(float(i) / nif * 100., 0) 
             if pc in pctp:
                 ipc = pctp.index(pc)
                 if not pcpd[ipc]:
