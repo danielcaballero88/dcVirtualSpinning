@@ -22,13 +22,13 @@ def main():
     volfrac = 0.1
     ncaps = 2
     mc = Mallacom(L, Dm, volfrac, dl, devang, fundisor=None)
-    for i in range(1, ncaps + 1):
+    for _i in range(1, ncaps + 1):
         mc.make_capa(dl, Dm, devang, volfrac, orient_distr=fundisor)
     archivo = DIR / 'malla_test_basic.txt'
     mc.guardar_en_archivo(archivo)
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(111)
-    mc.pre_graficar_bordes(fig, ax)
+    mc.marco.graficar(fig, ax)
     mc.pre_graficar_fibras(fig, ax, color_por="nada", byn=True, linewidth=1.5)
     plt.show()
 

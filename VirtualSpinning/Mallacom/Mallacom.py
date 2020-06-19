@@ -8,6 +8,7 @@ from .Capas import Capas
 from .Fibras import Fibras
 from .Segmentos import Segmentos
 from .Nodos import Nodos
+from .Marco import Marco
 from VirtualSpinning.aux import calcular_interseccion_entre_segmentos as calcular_interseccion
 from VirtualSpinning.aux import find_string_in_file
 from VirtualSpinning.aux import calcular_longitud_de_segmento
@@ -26,21 +27,7 @@ class Mallacom(object):
         self.fibs = Fibras()  # lista vacia
         self.segs = Segmentos()  # lista vacia
         self.nods = Nodos()  # tiene dos listas vacias
-        self.bordes_n = Nodos()  # lista de coordenadas con los 4 nodos del borde
-        self.bordes_s = Segmentos()  # lista con los segmentos con los 4 nodos del borde
-        self.calcular_marco()
-
-    def calcular_marco(self):
-        # agrego los 4 nodos
-        self.bordes_n.add_nodo([0., 0.], 1)
-        self.bordes_n.add_nodo([self.L, 0.], 1)
-        self.bordes_n.add_nodo([self.L, self.L], 1)
-        self.bordes_n.add_nodo([0., self.L], 1)
-        # agrego los 4 segmentos
-        self.bordes_s.add_segmento([0, 1], self.bordes_n.r)
-        self.bordes_s.add_segmento([1, 2], self.bordes_n.r)
-        self.bordes_s.add_segmento([2, 3], self.bordes_n.r)
-        self.bordes_s.add_segmento([3, 0], self.bordes_n.r)
+        self.marco = Marco(L)
 
     def make_capa(self, dl=None, d=None, dtheta=None, volfraction=None, orient_distr=None):
         """
@@ -68,7 +55,6 @@ class Mallacom(object):
         if orient_distr is None:
             orient_distr = self.fundisor
         # --
-        ncapas = len(self.caps.con)
         capa_con = list()
         i = 0
         vols = 0.  # volumen de solido actual
@@ -105,7 +91,6 @@ class Mallacom(object):
     def calcular_volumen_de_una_fibra(self, f):
         """ calcula el volumen ocupado por una fibra """
         loco = self.calcular_loco_de_una_fibra(f)
-        dl = self.fibs.dls[f]
         d = self.fibs.ds[f]
         return loco * np.pi * d * d / 4.
 
@@ -123,26 +108,6 @@ class Mallacom(object):
         fracvol = volfs / volc
         return fracvol
 
-    def calcular_orientacion_de_una_fibra(self, f):
-        """ calcula la orientacion de una fibra como el promedio
-        de las orientacions de sus segmentos
-        cada orientacion es un angulo en [0,pi) """
-        fcon = self.fibs.con[f]
-        nsegs = len(fcon)
-        theta_f = 0.
-        for s in fcon:
-            # s es un indice de segmento
-            theta_s = self.segs.thetas[s]
-            # theta_s esta en [0,pi)
-            if theta_s >= np.pi:
-                theta_s = theta_s - np.pi
-            if theta_s < 0:
-                pass
-            # ahora voy haciendo el promedio
-            theta_f += theta_s
-        theta_f = theta_f / float(nsegs)
-        return theta_f
-
     def calcular_orientacion_extremo_extremo_de_una_fibra(self, f):
         fcon = self.fibs.con[f]
         s0 = fcon[0]
@@ -158,6 +123,65 @@ class Mallacom(object):
             theta = theta_2pi
         if theta_2pi < 0.:
             raise ValueError
+        return theta
+
+    @staticmethod
+    def get_cuadrante_theta_0_pi(theta):
+        if theta < np.pi * 1.0e-8:
+            return -1  # direccion horizontal
+        elif np.abs(theta - np.pi * 0.5) < 1.0e-8:
+            return -2  # direccion vertical
+        elif theta < np.pi * 0.5:
+            return 1  # primer cuadrante
+        else:
+            return 2  # segundo cuadrante
+
+    @staticmethod
+    def check_if_fibra_alineada_a_borde(cuad, b0):
+        if cuad == -1:  # fibra horizontal
+            if b0 in (0, 2):
+                return -1  # esta fibra no vale, es horizontal sobre un borde horizontal
+        elif cuad == -2:  # fibra vertical
+            if b0 in (1, 3):
+                return -1 # fibra vertical sobre borde vertical, no va
+        return 0
+
+    @staticmethod
+    def get_theta_2pi(th_0pi, cuad, b0):
+        """ a partir del angulo de fibra comprendido en [0, pi)
+        y el borde del cual parte la fibra, se calcula el angulo
+        que corresponde entre [0, 2pi) 
+        Parametros:
+            th_0pi: angulo de fibra en [0, pi) 
+            cuad: cuadrante de la fibra: -1, -2, 1, 2 = horizontal, vertical, primer, segundo
+            b0: integer con el borde, 0,1,2,3 = bottom, right, top, left
+        Returns: 
+            theta: angulo del versor de la fibra en [0, 2pi) hacia dentro del rve
+        """ 
+        if cuad == -1:  # fibra horizontal
+            if b0 in (0, 2):
+                raise Exception('Fibra horizontal alineada con borde!') 
+            elif b0 == 1:
+                theta = np.pi
+            else:  # b0 == 3
+                theta = 0.
+        elif cuad == -2:  # fibra vertical
+            if b0 in (1, 3):
+                raise Exception('Fibra vertical alineada con borde!')
+            elif b0 == 0:
+                theta = 0.5 * np.pi
+            else:  # b0 == 2
+                theta = 1.5 * np.pi
+        elif cuad == 1:  # primer cuadrante
+            if b0 in (0, 3):
+                theta = th_0pi
+            else:  # b0 in(1,2)
+                theta = th_0pi + np.pi
+        else:  # cuad == 2 segundo cuadrante
+            if b0 in (0, 1):
+                theta = th_0pi
+            else:  # b0 in (2,3)
+                theta = th_0pi + np.pi
         return theta
 
     def make_fibra(self, dl, d, dtheta, orient_distr=None):
@@ -179,50 +203,24 @@ class Mallacom(object):
         coors = list()
         # Armo el primer segmento
         # primero busco un nodo en el contorno
-        x0, y0, b0 = self.get_punto_sobre_frontera()
+        (x0, y0), b0 = self.marco.get_punto_random()
         if orient_distr is None:
-            theta_abs = np.random.rand() * np.pi
+            theta_fibra = np.random.rand() * np.pi
         else:
-            theta_abs = orient_distr()
-        # theta_abs = 179. * np.pi/180.
-        if theta_abs == np.pi:
-            theta_abs = 0.
-        elif theta_abs > np.pi:
-            raise ValueError("theta_abs de una fibra no comprendido en [0,pi)")
-        # veo el cuadrante
-        if theta_abs < np.pi * 1.0e-8:
-            cuad = -1  # direccion horizontal
-        elif np.abs(theta_abs - np.pi * 0.5) < 1.0e-8:
-            cuad = -2  # direccion vertical
-        elif theta_abs < np.pi * 0.5:
-            cuad = 1  # primer cuadrante
-        else:
-            cuad = 2  # segundo cuadrante
+            theta_fibra = orient_distr()
+        # me fijo que la orientacion caiga en el rango periodico [0,pi)
+        if theta_fibra == np.pi:
+            theta_fibra = 0.
+        elif theta_fibra > np.pi:
+            raise ValueError("theta_fibra de una fibra no comprendido en [0,pi)")
+        # veo el cuadrante (-1: 0=hor, -2: pi/2=vert, 1: <pi/2, 2: >pi/2)
+        cuad = self.get_cuadrante_theta_0_pi(theta_fibra)
         # ahora me fijo la relacion entre cuadrante y borde
-        if cuad == -1:  # fibra horizontal
-            if b0 in (0, 2):
-                return -1  # esta fibra no vale, es horizontal sobre un borde horizontal
-            elif b0 == 1:
-                theta = np.pi
-            else:  # b0 == 3
-                theta = 0.
-        elif cuad == -2:  # fibra vertical
-            if b0 in (1, 3):
-                return -1
-            elif b0 == 0:
-                theta = 0.5 * np.pi
-            else:  # b0 == 2
-                theta = 1.5 * np.pi
-        elif cuad == 1:  # primer cuadrante
-            if b0 in (0, 3):
-                theta = theta_abs
-            else:  # b0 in(1,2)
-                theta = theta_abs + np.pi
-        else:  # cuad == 2 segundo cuadrante
-            if b0 in (0, 1):
-                theta = theta_abs
-            else:  # b0 in (2,3)
-                theta = theta_abs + np.pi
+        check = self.check_if_fibra_alineada_a_borde(cuad, b0)
+        if check == -1:
+            return -1 # esta fibra no vale, esta alineada al borde
+        else: 
+            theta = self.get_theta_2pi(theta_fibra, cuad, b0)
         # ya tengo el angulo del segmento
         dx = dl * np.cos(theta)
         dy = dl * np.sin(theta)
@@ -270,23 +268,6 @@ class Mallacom(object):
         self.fibs.add_fibra(f_con, dl, d, dtheta)
         return len(self.fibs.con) - 1  # devuelvo el indice de la fibra
 
-    def get_punto_sobre_frontera(self):
-        boundary = np.random.randint(4)
-        d = np.random.rand() * self.L
-        if boundary == 0:
-            x = d
-            y = 0.0
-        elif boundary == 1:
-            x = self.L
-            y = d
-        elif boundary == 2:
-            x = self.L - d
-            y = self.L
-        elif boundary == 3:
-            x = 0.0
-            y = self.L - d
-        return x, y, float(boundary)
-
     def check_fuera_del_RVE(self, r):
         x = r[0]
         y = r[1]
@@ -304,21 +285,22 @@ class Mallacom(object):
         rs0 = self.nods.r[self.segs.con[s][0]]  # coordenadas xy del nodo 0 del segmento s
         rs1 = self.nods.r[self.segs.con[s][1]]  # coordenadas xy del nodo 1 del segmento s
         # pruebo con cada borde
-        for b in range(len(self.bordes_s.con)):  # recorro los 4 bordes
+        for b in range(4):  # recorro los 4 bordes
             # puntos del borde en cuestion
-            rb0 = self.bordes_n.r[self.bordes_s.con[b][0]]  # coordenadas xy del nodo 0 del borde b
-            rb1 = self.bordes_n.r[self.bordes_s.con[b][1]]  # coordenadas xy del nodo 1 del borde b
+            rb0, rb1 = self.marco.get_side_nodes(b) # coordenadas xy de los dos nodos del borde b
             interseccion = calcular_interseccion(rs0, rs1, rb0, rb1)
             if interseccion is None:  # no hubo interseccion
                 continue  # con este borde no hay interseccion, paso al que sigue
             else:  # hubo interseccion
-                in_r, in_tipo, in_seg0, in_seg1 = interseccion
+                in_r, in_tipo, *_ = interseccion
                 if in_tipo == 2:  # interseccion en el medio
                     try:  # tengo que mover el ultimo nodo y por lo tanto cambia el segmento
                         self.segs.mover_nodo(s, 1, self.nods.r, in_r)
                         rs1 = in_r
-                    except ValueError as e:
-                        print("error")
+                    except ValueError as err:
+                        # TODO: limpiar esto por el amor de la virgen y todos los santos
+                        print("Error en trim_fibra_at_frontera")
+                        print(err)
                         print(fib_con, b, interseccion)
                         quit()
                 else:  # interseccion coincide con uno o dos extremos
@@ -326,6 +308,7 @@ class Mallacom(object):
                     # porque el segmento 1 es el borde, y el primer nodo del seg 0 siempre deberia estar dentro del rve
                     # (o en el borde a lo sumo si se trata de una fibra de un solo segmento)
                     # y en ese caso no hay nada que hacer! puesto que el nodo ya esta en el borde
+                    # TODO: programar este caso, no es complicado
                     pass
 
     def cambiar_capas(self, new_ncapas):
@@ -346,17 +329,24 @@ class Mallacom(object):
         self.caps.set_capas_listoflists(capas_con)
 
     def calcular_conectividad_de_interfibras(self):
-        """ ojo son diferentes a las subfibras de una malla simplificada
+        """ 
+        Funcion para calcular las interfibras (fibras simplificadas)
+        Se recorren las fibras (sus conectividades) y se arman las 
+        interfibras (sus conectividades) descartando los nodos tipo 0
+        y cambiando de interfibra en los nodos tipo 2
+        -
+        ojo son diferentes a las subfibras de una malla simplificada
         aqui las interfibras son concatenaciones de segmentos entre nodos interseccion
-        en una ms las subfibras son una simplificacion de una fibra dando solamente los nodos extremos y enrulamiento """
+        en una ms las subfibras son una simplificacion de una fibra 
+        dando solamente los nodos extremos y enrulamiento """
         infbs_con = list()  # conectividad: lista de listas de segmentos
-        for f, fcon in enumerate(self.fibs.con):  # recorro las fibras
+        for fcon in self.fibs.con:  # recorro las fibras
             # cada fibra que empieza implica una nueva interfibra
             infb = list()  # conectividad de la interfibra: lista de segmentos
             # tengo que ir agregando segmentos hasta toparme con un nodo interseccion o frontera
             for s in fcon:  # recorro los segmentos de la fibra f
                 scon = self.segs.con[s]
-                n0, n1 = scon
+                _n0, n1 = scon
                 # agrego el segmento s a la interfibra
                 infb.append(s)
                 # si el ultimo nodo de s es interseccion o frontera aqui termina la interfibra
@@ -369,8 +359,8 @@ class Mallacom(object):
     def calcular_orientaciones(self):
         """ calcular las orientaciones de las fibras de toda la malla """
         thetas_f = list()
-        for f, fcon in enumerate(self.fibs.con):
-            # theta_f = self.calcular_orientacion_de_una_fibra(f)
+        l = len(self.fibs.con)
+        for f in range(l):
             theta_f = self.calcular_orientacion_extremo_extremo_de_una_fibra(f)
             thetas_f.append(theta_f)
         return thetas_f
@@ -436,20 +426,21 @@ class Mallacom(object):
         else:
             lamsr = rec_lamsr
         lamsr = np.array(lamsr, dtype=float)
-        if lamr_min is None:
-            lamr_min = np.min(lamsr)
-        if lamr_max is None:
-            lamr_max = np.max(lamsr)
-        # me fijo si hay imposicion de ancho de bin, entonces calculo con eso el numero de bins
-        if binwidth is not None:
-            n = int((lamr_max - lamr_min) / binwidth + 0.5)  # es el entero mas cercano
+        if lamr_min is None: lamr_min = np.min(lamsr)
+        if lamr_max is None: lamr_max = np.max(lamsr)
+        # me fijo si hay imposicion de ancho de bin, 
+        # entonces calculo con eso el numero de bins (es el entero mas cercano)
+        if binwidth is not None: n = int((lamr_max - lamr_min) / binwidth + 0.5) 
+        # calculo el histograma
         conteo, x_edges = np.histogram(lamsr, bins=n, range=(lamr_min, lamr_max))
         delta = (lamr_max - lamr_min) / n
         # pdf = conteo / float(np.sum(conteo)) / delta
         x = x_edges[:-1] + 0.5 * delta
         return x, delta, conteo
 
-    def get_histograma_lamr(self, lamr_min=None, lamr_max=None, nbins=5, binwidth=None, opcion="fibras",
+    def get_histograma_lamr(self, 
+                            lamr_min=None, lamr_max=None, 
+                            nbins=5, binwidth=None, opcion="fibras",
                             csv_file=False):
         if opcion == "fibras":
             lamsr = self.calcular_enrulamientos()
@@ -644,7 +635,7 @@ class Mallacom(object):
             dl = float(svals[1])
             d = float(svals[2])
             dtheta = float(svals[3])
-            nsegsf = int(svals[4])
+            # _nsegsf = int(svals[4])  # unused
             fcon = [int(val) for val in svals[5:]]
             fibs.append(fcon)
             dls.append(dl)
@@ -658,7 +649,7 @@ class Mallacom(object):
         for c in range(num_c):
             svals = next(fid).split()
             j = int(svals[0])
-            nfibsc = int(svals[1])
+            # _nfibsc = int(svals[1])  # unused
             ccon = [int(val) for val in svals[2:]]
             caps.append(ccon)
         # ahora que tengo todo armo el objeto
@@ -687,22 +678,6 @@ class Mallacom(object):
             malla.caps.add_capa(c_con)
         # listo
         return malla
-
-    def pre_graficar_bordes(self, fig, ax, byn=False):
-        # seteo
-        margen = 0.1 * self.L
-        ax.set_xlim(left=0 - margen, right=self.L + margen)
-        ax.set_ylim(bottom=0 - margen, top=self.L + margen)
-        # dibujo los bordes del rve
-        fron = []
-        fron.append([[0, self.L], [0, 0]])
-        fron.append([[0, 0], [self.L, 0]])
-        fron.append([[0, self.L], [self.L, self.L]])
-        fron.append([[self.L, self.L], [self.L, 0]])
-        plt_fron0 = ax.plot(fron[0][0], fron[0][1], linestyle=":", c="gray")
-        plt_fron1 = ax.plot(fron[1][0], fron[1][1], linestyle=":", c="gray")
-        plt_fron2 = ax.plot(fron[2][0], fron[2][1], linestyle=":", c="gray")
-        plt_fron3 = ax.plot(fron[3][0], fron[3][1], linestyle=":", c="gray")
 
     def pre_graficar_capas(self, fig, ax, byn=True):
         nc = len(self.caps.con)
@@ -911,9 +886,8 @@ class Mallacom(object):
     def pre_graficar_nodos_interseccion(self, fig, ax, markersize=8):
         # dibujo las fibras (los segmentos)
         # preparo las listas, una lista para cada fibra
-        xx = list()
-        yy = list()
-        # grafs = list() # un plot para cada fibra
+        xx = []
+        yy = []
         for n in range(len(self.nods.r)):
             if self.nods.tipos[n] == 2:
                 xx.append(self.nods.r[n][0])
@@ -923,9 +897,8 @@ class Mallacom(object):
     def pre_graficar_nodos_internos(self, fig, ax):
         # dibujo las fibras (los segmentos)
         # preparo las listas, una lista para cada fibra
-        xx = list()
-        yy = list()
-        grafs = list()  # un plot para cada fibra
+        xx = []
+        yy = []
         for n in range(len(self.nods.r)):
             if self.nods.tipos[n] == 0:
                 xx.append(self.nods.r[n][0])
@@ -933,7 +906,7 @@ class Mallacom(object):
         ax.plot(xx, yy, linewidth=0, marker=".", markersize=1)
 
     def pre_graficar(self, fig, ax, lamr_min=None, lamr_max=None, byn=False):
-        self.pre_graficar_bordes(fig, ax, byn)
+        self.marco.graficar(fig, ax)
         self.pre_graficar_nodos_frontera(fig, ax)
         self.pre_graficar_nodos_interseccion(fig, ax)
         self.pre_graficar_nodos_internos(fig, ax)

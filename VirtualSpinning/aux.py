@@ -208,6 +208,7 @@ def calcular_interseccion_entre_segmentos(r00, r01, r10, r11):
 
 
 def compute_from_curve(x, xx, yy, extrapolar=False):
+    """ hay una funcion np.interpolate pero no le confio """
     # primero chequeo si x cae fuera de intervalo
     if x < xx[0] or x > xx[-1]:
         if extrapolar:
@@ -223,22 +224,22 @@ def compute_from_curve(x, xx, yy, extrapolar=False):
             return yy[i - 1] + slope * (x - xx[i - 1])
 
 
-def compute_discrete_normal_distribution(mu=1.0, sigma=1.0, n=1001):
-    from scipy.stats import norm
-    x = np.linspace(mu - 10. * sigma, mu + 10. * sigma, num=n)
-    y = norm.pdf(x)
-    Y = norm.cdf(x)
-    return x, y, Y
+# def compute_discrete_normal_distribution(mu=1.0, sigma=1.0, n=1001):
+#     from scipy.stats import norm
+#     x = np.linspace(mu - 10. * sigma, mu + 10. * sigma, num=n)
+#     y = norm.pdf(x)
+#     Y = norm.cdf(x)
+#     return x, y, Y
 
 
-class Discrete_normal_distribution(object):
-    def __init__(self, mu=0., sigma=1., n=1001):
-        # armo curva discreta
-        self.x = np.linspace(mu - 10. * sigma, mu + 10. * sigma, n)
-        self.y = stats.norm.pdf(self.x, mu, sigma)
-        self.Y = stats.norm.cdf(self.x, mu, sigma)
+# class Discrete_normal_distribution(object):
+#     def __init__(self, mu=0., sigma=1., n=1001):
+#         # armo curva discreta
+#         self.x = np.linspace(mu - 10. * sigma, mu + 10. * sigma, n)
+#         self.y = stats.norm.pdf(self.x, mu, sigma)
+#         self.Y = stats.norm.cdf(self.x, mu, sigma)
 
-    def get_sample(self):
-        r = np.random.random()
-        x = compute_from_curve(r, self.Y, self.x, True)
-        return x
+#     def get_sample(self):
+#         r = np.random.random()
+#         x = compute_from_curve(r, self.Y, self.x, True)
+#         return x
