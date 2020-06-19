@@ -171,92 +171,6 @@ class Mallasim(object):
         # ---
         fid.close()
 
-    def calcular_fuerzas(self, longout=False):
-        return self.fibras.calcular_fuerzas(self.nodos.r, longout)
-
-    def deformar_frontera(self, F):
-        self.nodos.r[self.nodos.mf] = np.matmul(self.nodos.r0[self.nodos.mf], np.transpose(F))
-
-    def calcular_dr(self):
-        dr = np.zeros(np.shape(self.nodos.r), dtype=float)
-        r1 = self.nodos.r.copy()  # posiciones actualizadas en iteraciones
-        for i in range(10):
-            A, b = self.calcular_A_b(r1)
-            dr = np.linalg.solve(A, b)
-            residuos = np.matmul(A, dr) - b
-            error = np.max(np.abs(np.sqrt(np.sum(dr * dr, axis=1))))
-            print(i, ":", error)
-            r1 += dr.reshape(-1, 2)
-            if error < 1.e-10:
-                break
-        return r1
-
-    def calcular_A_b(self, r1):
-        """ calcula la matriz tangente A y el vector de cargas b
-        alrededor de las posiciones dadas por r1
-        que es tipicamente el array de posiciones en la iteracion previa """
-        # seteo matrices
-        nG = self.nodos.n * 2
-        matG = np.zeros((nG, nG), dtype=float)
-        vecG = np.zeros((nG, 1), dtype=float)
-        nL = 2  # tengo que armar la matriz tangente respecto de un solo nodo (hay doble simetria)
-        matL = np.zeros((nL, nL), dtype=float)
-        vecL = np.zeros((nL, 1), dtype=float)
-        for f, (n0, n1) in enumerate(self.fibras.con):
-            if f == 2:
-                pass
-            r_n0 = r1[n0]
-            r_n1 = r1[n1]
-            r_n0_px = r1[n0] + DELTAX
-            r_n0_mx = r1[n0] - DELTAX
-            r_n0_py = r1[n0] + DELTAY
-            r_n0_my = r1[n0] - DELTAY
-            F_c = self.fibras.calcular_fuerza(f, r_n0, r_n1)
-            F_mx = self.fibras.calcular_fuerza(f, r_n0_mx, r_n1)
-            F_px = self.fibras.calcular_fuerza(f, r_n0_px, r_n1)
-            F_my = self.fibras.calcular_fuerza(f, r_n0_my, r_n1)
-            F_py = self.fibras.calcular_fuerza(f, r_n0_py, r_n1)
-            dFdx = (F_px - F_mx) * DELTA21
-            dFdy = (F_py - F_my) * DELTA21
-            matL[:, 0] = dFdx[:, 0]
-            matL[:, 1] = dFdy[:, 0]
-            vecL = - F_c
-            # ahora a ensamblar
-            # primero el vector de cargas
-            row = n0 * 2
-            col = n1 * 2
-            vecG[row:row + 2] += vecL
-            vecG[col:col + 2] += -vecL
-            # luego matriz local va a 4 submatrices de la global
-            # primero en el nodo 0
-            row = n0 * 2
-            col = n0 * 2
-            matG[row:row + 2, col:col + 2] += matL
-            # luego lo mismo en el nodo 1
-            row = n1 * 2
-            col = n1 * 2
-            matG[row:row + 2, col:col + 2] += matL
-            # luego las cruzadas
-            row = n0 * 2
-            col = n1 * 2
-            matG[row:row + 2, col:col + 2] += - matL
-            row = n1 * 2
-            col = n0 * 2
-            matG[row:row + 2, col:col + 2] += - matL
-        # ahora las condiciones de dirichlet
-        for n in range(self.nodos.n):
-            if self.nodos.t[n] == 1:
-                ix = 2 * n
-                iy = 2 * n + 1
-                matG[ix, :] = 0.
-                matG[ix, ix] = 1.
-                vecG[ix] = 0.
-                matG[iy, :] = 0.
-                matG[iy, iy] = 1.
-                vecG[iy] = 0.
-        # fin
-        return matG, vecG
-
     def pre_graficar_bordes(self, fig, ax, byn=False):
         # deformacion afin del borde
         r_corners = np.array([[-.5, -.5], [.5, -.5], [.5, .5], [-.5, .5], [-.5, -.5]]) * self.L
@@ -272,7 +186,7 @@ class Mallasim(object):
         ax.set_xlim(left=lim_left - margen, right=lim_right + margen)
         ax.set_ylim(bottom=lim_bottom - margen, top=lim_top + margen)
         # dibujo los bordes del rve
-        plt_fron = ax.plot(r_corners[:, 0], r_corners[:, 1], linestyle=":", c="gray")
+        ax.plot(r_corners[:, 0], r_corners[:, 1], linestyle=":", c="gray")
 
     def pre_graficar_0(self, fig, ax, lamr_min=None, lamr_max=None, plotnodos=False, maxnfibs=500, colorbar=False):
         mi_cm = plt.cm.jet

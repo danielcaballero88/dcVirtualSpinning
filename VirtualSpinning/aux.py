@@ -222,24 +222,3 @@ def compute_from_curve(x, xx, yy, extrapolar=False):
         if x < xx[i]:
             slope = (yy[i] - yy[i - 1]) / (xx[i] - xx[i - 1])
             return yy[i - 1] + slope * (x - xx[i - 1])
-
-
-# def compute_discrete_normal_distribution(mu=1.0, sigma=1.0, n=1001):
-#     from scipy.stats import norm
-#     x = np.linspace(mu - 10. * sigma, mu + 10. * sigma, num=n)
-#     y = norm.pdf(x)
-#     Y = norm.cdf(x)
-#     return x, y, Y
-
-
-# class Discrete_normal_distribution(object):
-#     def __init__(self, mu=0., sigma=1., n=1001):
-#         # armo curva discreta
-#         self.x = np.linspace(mu - 10. * sigma, mu + 10. * sigma, n)
-#         self.y = stats.norm.pdf(self.x, mu, sigma)
-#         self.Y = stats.norm.cdf(self.x, mu, sigma)
-
-#     def get_sample(self):
-#         r = np.random.random()
-#         x = compute_from_curve(r, self.Y, self.x, True)
-#         return x
