@@ -16,26 +16,43 @@ from VirtualSpinning.aux import calcular_longitud_de_segmento
 from VirtualSpinning.aux import calcular_angulo_de_segmento
 
 
+MESH_PARAMS = ('L', 'D', 'vf', 'ls', 'dth', 'nc', 'fdo')
+
+
 class Mallacom(object):
-    def __init__(self, L, Dm, volfrac, ls, devangmax, fundisor=None):
-        self.L = L
-        self.Dm = Dm  # diametro medio de fibras y espesor de las capas
-        self.volfrac = volfrac  # si es float < 1 es volfrac, si es > 1 es num de fibras por capa
-        self.ls = ls  # longitud de segmento
-        self.devangmax = devangmax  # angulo maximo de desviacion entre segmentos
-        self.fundisor = fundisor  # tiene que ser una funcion (or callable object) que devuelve un valor de orientacion
+    def __init__(self, L, D, vf, ls, dth, nc, fdo=None):
+        self.params = {
+            'L': L,
+            'D': D,
+            'vf': vf,
+            'ls': ls,
+            'dth': dth,
+            'fdo': fdo,
+            'nc': nc
+        }
         self.caps = Capas()  # lista vacia
         self.fibs = Fibras()  # lista vacia
         self.segs = Segmentos()  # lista vacia
         self.nods = Nodos()  # tiene dos listas vacias
         self.marco = Marco(L)
 
-    def make_capa(self, dl=None, d=None, dtheta=None, volfraction=None, orient_distr=None):
+    def make_malla(self):
+        """
+        armo una malla
+        """
+        for _ic in range(self.params['nc']):
+            self.make_capa()
+
+    def make_capa(self, **kwargs):
         """
         armo una capa con fibras, todas van a armarse con los
         mismos parmetros dl y dtheta (se debe modificar para usar distribuciones)
         se depositan fibras hasta que se supera la fraccion de volumen dictada
         """
+        # me fijo si reemplazo parametros globales de la malla
+        for key in kwargs: 
+            assert key in MESH_PARAMS
+
         # si volfraction es int estoy dando el numero de fibras!
         if isinstance(volfraction, int):
             cond_fin_n = True
@@ -50,11 +67,9 @@ class Mallacom(object):
         if d is None:
             d = self.Dm
         if dtheta is None:
-            dtheta = self.devangmax
+            dtheta = self.dth
         if volfraction is None:
-            volfraction = self.volfrac
-        if orient_distr is None:
-            orient_distr = self.fundisor
+            volfraction = self.vf
         # --
         capa_con = list()
         i = 0
@@ -76,6 +91,90 @@ class Mallacom(object):
                 if vols >= vols_final:
                     break
         self.caps.add_capa(capa_con)
+
+    def make_fibra(self, dl, d, dtheta, orient_distr=None):
+        """ tengo que armar una lista de segmentos
+        nota: todos los indices (de nodos, segmentos y fibras)
+        son globales en la malla, cada nodo nuevo tiene un indice +1 del anterior
+        idem para segmentos y fibras
+        los indices de los nodos, de los segmentos y de las fibras van por separado
+        es decir que hay un nodo 1, un segmento 1 y una fibra 1
+        pero no hay dos de misma especie que compartan indice """
+        # ---
+        # primero hago un segmento solo
+        # para eso pongo un punto sobre la frontera del rve y el otro lo armo con un desplazamiento recto
+        # tomo un angulo random entre 0 y pi, saliente del borde hacia adentro del rve
+        # eso me da un nuevo segmento
+        # agrego todas las conectividades
+        # ---
+        # Voy a ir guardando en una lista las coordenadas de los nodos
+        coors = list()
+        # Armo el primer segmento
+        # primero busco un nodo en el contorno
+        (x0, y0), b0 = self.marco.get_punto_random()
+        if orient_distr is None:
+            theta_fibra = np.random.rand() * np.pi
+        else:
+            theta_fibra = orient_distr()
+        # me fijo que la orientacion caiga en el rango periodico [0,pi)
+        if theta_fibra == np.pi:
+            theta_fibra = 0.
+        elif theta_fibra > np.pi:
+            raise ValueError("theta_fibra de una fibra no comprendido en [0,pi)")
+        # veo el cuadrante (-1: 0=hor, -2: pi/2=vert, 1: <pi/2, 2: >pi/2)
+        cuad = self.get_cuadrante_theta_0_pi(theta_fibra)
+        # ahora me fijo la relacion entre cuadrante y borde
+        check = self.check_if_fibra_alineada_a_borde(cuad, b0)
+        if check == -1:
+            return -1 # esta fibra no vale, esta alineada al borde
+        else: 
+            theta = self.get_theta_2pi(theta_fibra, cuad, b0)
+        # ya tengo el angulo del segmento
+        dx = dl * np.cos(theta)
+        dy = dl * np.sin(theta)
+        coors.append([x0, y0])
+        coors.append([x0 + dx, y0 + dy])
+        # ahora agrego nuevos nodos en un bucle
+        # cada iteracion corresponde a depositar un nuevo segmento
+        n = 1
+        while True:
+            # si el nodo anterior ha caido fuera del rve ya esta la fibra
+            if self.check_fuera_del_RVE(coors[-1]):
+                break
+            n += 1
+            # de lo contrario armo un nuevo segmento a partir del ultimo nodo
+            # el angulo puede sufrir variacion
+            theta = theta + dtheta * (2.0 * np.random.rand() - 1.0)
+            # desplazamiento:
+            dx = dl * np.cos(theta)
+            dy = dl * np.sin(theta)
+            # nuevo nodo
+            x = coors[-1][0] + dx
+            y = coors[-1][1] + dy
+            coors.append([x, y])
+        # -
+        # Aqui termine de obtener las coordenadas de los nodos que componen la fibra
+        # si la fibra es muy corta la voy a descartar
+        # para eso calculo su longitud de contorno
+        loco = dl * float(len(coors) - 1)  # esto es aproximado porque el ultimo segmento se recorta
+        if loco < 0.3 * self.L:
+            return -1
+        # Voy a ensamblar la fibra como concatenacion de segmentos, que a su vez son concatenacion de dos nodos
+        f_con = list()
+        # agrego el primer nodo a la conectividad de nodos
+        self.nods.add_nodo(coors[0], 1)
+        for coor in coors[1:]:  # reocrro los nodos desde el nodo 1 (segundo nodo)
+            self.nods.add_nodo(coor, 0)
+            nnods = len(self.nods)
+            s0 = [nnods - 2, nnods - 1]
+            self.segs.add_segmento(s0, self.nods.r)
+            nsegs = len(self.segs)
+            f_con.append(nsegs - 1)
+        # al final recorto la fibra y la almaceno
+        self.nods.tipos[-1] = 1
+        self.trim_fibra_at_frontera(f_con)  # lo comento porque a veces quedan segmentos super pequenos
+        self.fibs.add_fibra(f_con, dl, d, dtheta)
+        return len(self.fibs.con) - 1  # devuelvo el indice de la fibra
 
     def calcular_loco_de_una_fibra(self, f):
         """ calcula la longitud de contorno de una fibra """
@@ -183,90 +282,6 @@ class Mallacom(object):
             else:  # b0 in (2,3)
                 theta = th_0pi + np.pi
         return theta
-
-    def make_fibra(self, dl, d, dtheta, orient_distr=None):
-        """ tengo que armar una lista de segmentos
-        nota: todos los indices (de nodos, segmentos y fibras)
-        son globales en la malla, cada nodo nuevo tiene un indice +1 del anterior
-        idem para segmentos y fibras
-        los indices de los nodos, de los segmentos y de las fibras van por separado
-        es decir que hay un nodo 1, un segmento 1 y una fibra 1
-        pero no hay dos de misma especie que compartan indice """
-        # ---
-        # primero hago un segmento solo
-        # para eso pongo un punto sobre la frontera del rve y el otro lo armo con un desplazamiento recto
-        # tomo un angulo random entre 0 y pi, saliente del borde hacia adentro del rve
-        # eso me da un nuevo segmento
-        # agrego todas las conectividades
-        # ---
-        # Voy a ir guardando en una lista las coordenadas de los nodos
-        coors = list()
-        # Armo el primer segmento
-        # primero busco un nodo en el contorno
-        (x0, y0), b0 = self.marco.get_punto_random()
-        if orient_distr is None:
-            theta_fibra = np.random.rand() * np.pi
-        else:
-            theta_fibra = orient_distr()
-        # me fijo que la orientacion caiga en el rango periodico [0,pi)
-        if theta_fibra == np.pi:
-            theta_fibra = 0.
-        elif theta_fibra > np.pi:
-            raise ValueError("theta_fibra de una fibra no comprendido en [0,pi)")
-        # veo el cuadrante (-1: 0=hor, -2: pi/2=vert, 1: <pi/2, 2: >pi/2)
-        cuad = self.get_cuadrante_theta_0_pi(theta_fibra)
-        # ahora me fijo la relacion entre cuadrante y borde
-        check = self.check_if_fibra_alineada_a_borde(cuad, b0)
-        if check == -1:
-            return -1 # esta fibra no vale, esta alineada al borde
-        else: 
-            theta = self.get_theta_2pi(theta_fibra, cuad, b0)
-        # ya tengo el angulo del segmento
-        dx = dl * np.cos(theta)
-        dy = dl * np.sin(theta)
-        coors.append([x0, y0])
-        coors.append([x0 + dx, y0 + dy])
-        # ahora agrego nuevos nodos en un bucle
-        # cada iteracion corresponde a depositar un nuevo segmento
-        n = 1
-        while True:
-            # si el nodo anterior ha caido fuera del rve ya esta la fibra
-            if self.check_fuera_del_RVE(coors[-1]):
-                break
-            n += 1
-            # de lo contrario armo un nuevo segmento a partir del ultimo nodo
-            # el angulo puede sufrir variacion
-            theta = theta + dtheta * (2.0 * np.random.rand() - 1.0)
-            # desplazamiento:
-            dx = dl * np.cos(theta)
-            dy = dl * np.sin(theta)
-            # nuevo nodo
-            x = coors[-1][0] + dx
-            y = coors[-1][1] + dy
-            coors.append([x, y])
-        # -
-        # Aqui termine de obtener las coordenadas de los nodos que componen la fibra
-        # si la fibra es muy corta la voy a descartar
-        # para eso calculo su longitud de contorno
-        loco = dl * float(len(coors) - 1)  # esto es aproximado porque el ultimo segmento se recorta
-        if loco < 0.3 * self.L:
-            return -1
-        # Voy a ensamblar la fibra como concatenacion de segmentos, que a su vez son concatenacion de dos nodos
-        f_con = list()
-        # agrego el primer nodo a la conectividad de nodos
-        self.nods.add_nodo(coors[0], 1)
-        for coor in coors[1:]:  # reocrro los nodos desde el nodo 1 (segundo nodo)
-            self.nods.add_nodo(coor, 0)
-            nnods = len(self.nods)
-            s0 = [nnods - 2, nnods - 1]
-            self.segs.add_segmento(s0, self.nods.r)
-            nsegs = len(self.segs)
-            f_con.append(nsegs - 1)
-        # al final recorto la fibra y la almaceno
-        self.nods.tipos[-1] = 1
-        self.trim_fibra_at_frontera(f_con)  # lo comento porque a veces quedan segmentos super pequenos
-        self.fibs.add_fibra(f_con, dl, d, dtheta)
-        return len(self.fibs.con) - 1  # devuelvo el indice de la fibra
 
     def check_fuera_del_RVE(self, r):
         x = r[0]
@@ -564,9 +579,9 @@ class Mallacom(object):
         fid.write("*Parametros (L, Dm, volfrac, ls, devangmax) \n")
         fid.write("{:20.8f}\n".format(self.L))
         fid.write("{:20.8f}\n".format(self.Dm))
-        fid.write("{:20.8f}\n".format(self.volfrac))
+        fid.write("{:20.8f}\n".format(self.vf))
         fid.write("{:20.8f}\n".format(self.ls))
-        fid.write("{:20.8f}\n".format(self.devangmax * 180. / np.pi))  # lo escribo en grados
+        fid.write("{:20.8f}\n".format(self.dth * 180. / np.pi))  # lo escribo en grados
         # ---
         # escribo los nodos: indice, tipo, y coordenadas
         dString = "*Coordenadas \n" + str(len(self.nods.r)) + "\n"
