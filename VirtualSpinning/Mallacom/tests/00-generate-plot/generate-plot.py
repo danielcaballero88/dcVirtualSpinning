@@ -22,9 +22,9 @@ def main():
     devang = 10. * pi / 180.
     volfrac = 0.1
     ncaps = 2
-    mc = Mallacom(L, Dm, volfrac, dl, devang)
+    mc = Mallacom(L, Dm, volfrac, dl, devang, ncaps)
     for _i in range(1, ncaps + 1):
-        mc.make_capa(dl, Dm, devang, volfrac, orient_distr=fundisor)
+        mc.make_capa(fdo=fundisor)
     archivo = DIR / 'malla_test_basic.txt'
     mc.guardar_en_archivo(archivo)
     fig = plt.figure(figsize=(8, 8))

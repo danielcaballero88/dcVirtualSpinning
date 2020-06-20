@@ -7,15 +7,15 @@ class Fibras(object):
 
     def __init__(self):
         self.con = []  # conectividad: va a ser una lista de listas de segmentos (sus indices nada mas)
-        self.dls = []
-        self.ds = []
-        self.dthetas = []
+        self.dl = []  # longitud de segmento de cada fibra
+        self.D = []  # diametro de cada fibra
+        self.dth = []  # angulo de desviacion entre segmentos maximo de cada fibra
 
     def add_fibra(self, fib_con, dl, d, dtheta):
         self.con.append(fib_con)
-        self.dls.append(dl)
-        self.ds.append(d)
-        self.dthetas.append(dtheta)
+        self.dl.append(dl)
+        self.D.append(d)
+        self.dth.append(dtheta)
 
     def insertar_segmento(self, j, k, s):
         """ inserta un segmento en la conectividad de una fibra
