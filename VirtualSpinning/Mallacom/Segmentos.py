@@ -1,5 +1,5 @@
 import numpy as np
-from VirtualSpinning.aux import iguales
+from VirtualSpinning.aux import iguales, calcular_angulo_de_segmento
 
 
 class Segmentos(object):
@@ -28,30 +28,25 @@ class Segmentos(object):
         alcanza con que esten presentes en la lista los dos nodos de seg_con)
         intersec indica si el segmento ha sido intersectado aun o no"""
         self.con.append(seg_con)
-        try:
-            longitud, angulo = self.calcular_long_y_theta(seg_con, coors)
-        except ValueError:
-            raise ValueError("Error, segmento de longitud nula!!")
-        self.thetas.append(angulo)
-        self.longs.append(longitud)
+        self.calc_long(j=-1, coors=coors, new=True)
+        self.calc_theta(j=-1, coors=coors, new=True)
 
     def actualizar_segmento(self, j, coors):
         """ en caso de que se mueva un nodo y haya que actualizar theta y longitud """
-        long, ang = self.calcular_long_y_theta(self.con[j], coors)
-        self.thetas[j] = ang
-        self.longs[j] = long
+        self.calc_long(j, coors) 
+        self.calc_theta(j, coors)
 
-    def mover_nodo(self, j, n, coors, new_r):
-        """ mueve un nodo del segmento
-        coors es una lista, es un objeto mutable
-        por lo que al salir de este metodo se va ver modificada
-        es decir, es un puntero
-        j es el indice del segmento a moverle un nodo
-        n es el indice del nodo para el segmento: 0 es inicial, 1 es final """
-        assert n in (0, 1)
-        nglobal = self.con[j][n]
-        coors[nglobal] = new_r  # se lo modifica resida donde resida (normalmente en un objeto nodos)
-        self.actualizar_segmento(j, coors)
+    # def mover_nodo(self, j, n, coors, new_r):
+    #     """ mueve un nodo del segmento
+    #     coors es una lista, es un objeto mutable
+    #     por lo que al salir de este metodo se va ver modificada
+    #     es decir, es un puntero
+    #     j es el indice del segmento a moverle un nodo
+    #     n es el indice del nodo para el segmento: 0 es inicial, 1 es final """
+    #     assert n in (0, 1)
+    #     nglobal = self.con[j][n]
+    #     coors[nglobal] = new_r  # se lo modifica resida donde resida (normalmente en un objeto nodos)
+    #     self.actualizar_segmento(j, coors)
 
     def cambiar_conectividad(self, j, new_con, coors):
         """ se modifica la conectividad de un segmento (j) de la lista
@@ -59,45 +54,46 @@ class Segmentos(object):
         y por lo tanto se vuelve a calcular su angulo y longitud
         (util para dividir segmentos en 2) """
         self.con[j] = new_con
-        longitud, angulo = self.calcular_long_y_theta(new_con, coors)
-        self.thetas[j] = angulo
-        self.longs[j] = longitud
+        self.calc_long(j, coors) 
+        self.calc_theta(j, coors)
 
-    @staticmethod
-    def calcular_long_y_theta(seg, coors):
-        n0 = seg[0]
-        n1 = seg[1]
-        dx = coors[n1][0] - coors[n0][0]
-        dy = coors[n1][1] - coors[n0][1]
-        long = np.sqrt(dx * dx + dy * dy)
-        # ahora theta
-        if iguales(dx, 0.0):
-            # segmento vertical
-            if iguales(dy, 0.0, 1.0e-12):
-                raise ValueError("Error, segmento de longitud nula!!")
-            elif dy > 0:
-                theta = np.pi * .5
-            else:
-                theta = 1.5 * np.pi
-        elif iguales(dy, 0):
-            # segmento horizontal
-            if dx > 0:
-                theta = 0.0
-            else:
-                theta = np.pi
-        else:
-            # segmento oblicuo
-            if dx < 0:
-                # segundo o tercer cuadrante
-                theta = np.pi + np.arctan(dy / dx)
-            elif dy > 0:
-                # primer cuadrante (dx>0)
-                theta = np.arctan(dy / dx)
-            else:
-                # dx>0 and dy<0
-                # cuarto cuadrante
-                theta = 2.0 * np.pi + np.arctan(dy / dx)
-        return long, theta
+    def calc_long(self, j, coors, new=False):
+        """
+        Calcular la longitud de un segmento, si es un segmento nuevo
+        entonces se debe anexar a la lista de longitudes, 
+        si es un segmento viejo se debe modificar su valor en la lista
+
+        Args:
+            j: indice del segmento
+            coors: array de coordenadas de los nodos 
+            new: boolean, True si es un segmento nuevo
+        """
+        n0, n1 = self.con[j]
+        dr = coors[n1] - coors[n0]
+        long = np.sqrt(np.sum(dr*dr))
+        if new:
+            self.longs.append(long)
+        else: 
+            self.longs[j] = long
+
+    def calc_theta(self, j, coors, new=False):
+        """
+        Calcular el angulo de un segmento, si es un segmento nuevo
+        entonces se debe anexar a la lista de angulos, 
+        si es un segmento viejo se debe modificar su valor en la lista
+
+        Args:
+            j: indice del segmento
+            coors: array de coordenadas de los nodos 
+            new: boolean, True si es un segmento nuevo
+        """
+        n0, n1 = self.con[j] 
+        r0, r1 = coors[[n0, n1]]
+        theta = calcular_angulo_de_segmento(r0, r1)
+        if new:
+            self.thetas.append(theta)
+        else: 
+            self.thetas[j] = theta
 
     def get_right(self, j, coors):
         n0 = self.con[j][0]

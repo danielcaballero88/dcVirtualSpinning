@@ -16,66 +16,176 @@ from VirtualSpinning.aux import calcular_longitud_de_segmento
 from VirtualSpinning.aux import calcular_angulo_de_segmento
 
 
+MESH_PARAMS = ('L', 'D', 'vf', 'ls', 'dth', 'nc', 'fdo')
+PI = np.pi
+
+
 class Mallacom(object):
-    def __init__(self, L, Dm, volfrac, ls, devangmax, fundisor=None):
-        self.L = L
-        self.Dm = Dm  # diametro medio de fibras y espesor de las capas
-        self.volfrac = volfrac  # si es float < 1 es volfrac, si es > 1 es num de fibras por capa
-        self.ls = ls  # longitud de segmento
-        self.devangmax = devangmax  # angulo maximo de desviacion entre segmentos
-        self.fundisor = fundisor  # tiene que ser una funcion (or callable object) que devuelve un valor de orientacion
+    def __init__(self, L, D, vf, ls, dth, nc, fdo=None):
+        self.params = {
+            'L': L,
+            'D': D,
+            'vf': vf,
+            'ls': ls,
+            'dth': dth,
+            'fdo': fdo,
+            'nc': nc
+        }
         self.caps = Capas()  # lista vacia
         self.fibs = Fibras()  # lista vacia
         self.segs = Segmentos()  # lista vacia
         self.nods = Nodos()  # tiene dos listas vacias
         self.marco = Marco(L)
 
-    def make_capa(self, dl=None, d=None, dtheta=None, volfraction=None, orient_distr=None):
+    def make_malla(self):
+        """
+        armo una malla
+        """
+        for _ic in range(self.params['nc']):
+            self.make_capa()
+
+    def make_capa(self, **kwargs):
         """
         armo una capa con fibras, todas van a armarse con los
         mismos parmetros dl y dtheta (se debe modificar para usar distribuciones)
         se depositan fibras hasta que se supera la fraccion de volumen dictada
         """
-        # si volfraction es int estoy dando el numero de fibras!
-        if isinstance(volfraction, int):
-            cond_fin_n = True
-            n_final = volfraction
-        else:
-            cond_fin_n = False
-            volc = self.L * self.L * self.Dm  # volumen de la capa
-            vols_final = volfraction * volc  # volumen de solido (ocupado por fibras) a alcanzar
-        # chequeo si uso los parametros globales de la malla o si di parametros diferentes para esta capa
-        if dl is None:
-            dl = self.ls
-        if d is None:
-            d = self.Dm
-        if dtheta is None:
-            dtheta = self.devangmax
-        if volfraction is None:
-            volfraction = self.volfrac
-        if orient_distr is None:
-            orient_distr = self.fundisor
+
+        # me fijo si reemplazo parametros globales de la malla
+        cp = self.params.copy()  # cp = capa_params
+        for key in kwargs: 
+            assert key in MESH_PARAMS
+            cp[key] = kwargs[key]
+
+        # calculo el volumen de solido (ocupado por fibras) objetivo
+        volc = cp['L']**2 * cp['D']  # volumen de la capa (fibras + vacio)
+        vols_final = cp['vf'] * volc  # volumen de solido objetivo
+        
         # --
-        capa_con = list()
+        capa_con = []
         i = 0
         vols = 0.  # volumen de solido actual
-        while True:
+        while vols < vols_final:
             i += 1
-            j = self.make_fibra(dl, d, dtheta, orient_distr)
+            j = self.make_fibra(**cp)
             if j == -1:
                 i -= 1
             else:
                 volf = self.calcular_volumen_de_una_fibra(j)
                 vols += volf
                 capa_con.append(j)
-            # me fijo si complete la capa
-            if cond_fin_n:
-                if i == n_final:
-                    break
-            else:
-                if vols >= vols_final:
-                    break
+
+        # agrego la capa a la conectividad
         self.caps.add_capa(capa_con)
+        
+        # fin
+        return 0
+
+    def make_fibra(self, **params):
+        """ tengo que armar una lista de segmentos
+        nota: todos los indices (de nodos, segmentos y fibras)
+        son globales en la malla, cada nodo nuevo tiene un indice +1 del anterior
+        idem para segmentos y fibras
+        los indices de los nodos, de los segmentos y de las fibras van por separado
+        es decir que hay un nodo 1, un segmento 1 y una fibra 1
+        pero no hay dos de misma especie que compartan indice """
+        # ---
+        # primero hago un segmento solo
+        # para eso pongo un punto sobre la frontera del rve y el otro lo armo con un desplazamiento recto
+        # tomo un angulo random entre 0 y pi, saliente del borde hacia adentro del rve
+        # eso me da un nuevo segmento
+        # agrego todas las conectividades
+        # ---
+
+        # Voy a ir guardando en una lista las coordenadas de los nodos
+        coors = []
+
+        # Variables locales mas comodas 
+        fdo = params['fdo']
+        ls = params['ls']
+        dth = params['dth']
+        L = params['L']
+        D = params['D']
+
+        # ----------
+        # 1
+        # Armo el primer segmento
+        # primero busco un nodo en el contorno
+        (x0, y0), b0 = self.marco.get_punto_random()
+        if fdo is None:
+            theta_fibra = np.random.rand() * PI
+        else:
+            theta_fibra = fdo()
+        # Me fijo que la orientacion caiga en el rango periodico [0,pi)
+        if theta_fibra == PI:
+            theta_fibra = 0.
+        elif theta_fibra > PI:
+            raise ValueError("theta_fibra de una fibra no comprendido en [0,pi)")
+        # Veo el cuadrante (-1: 0=hor, -2: pi/2=vert, 1: <pi/2, 2: >pi/2)
+        cuad = self.get_cuadrante_theta_0_pi(theta_fibra)
+        # Ahora me fijo la relacion entre cuadrante y borde
+        check = self.check_if_fibra_alineada_a_borde(cuad, b0)
+        if check == -1:
+            return -1 # esta fibra no vale, esta alineada al borde
+        else: 
+            theta = self.get_theta_2pi(theta_fibra, cuad, b0)
+        # Ya tengo el angulo del segmento
+        dx = ls * np.cos(theta)
+        dy = ls * np.sin(theta)
+        coors.append([x0, y0])
+        coors.append([x0 + dx, y0 + dy])
+        # ----------
+
+        # ----------
+        # 2
+        # Ahora agrego nuevos nodos (y segmenos) en un bucle
+        # cada iteracion corresponde a depositar un nuevo segmento
+        n = 1
+        while True:
+            # si el nodo anterior ha caido fuera del rve ya esta la fibra
+            if self.check_fuera_del_RVE(coors[-1]):
+                break
+            n += 1
+            # de lo contrario armo un nuevo segmento a partir del ultimo nodo
+            # el angulo puede sufrir variacion
+            theta = theta + dth * (2.0 * np.random.rand() - 1.0)
+            # desplazamiento:
+            dx = ls * np.cos(theta)
+            dy = ls * np.sin(theta)
+            # nuevo nodo
+            x = coors[-1][0] + dx
+            y = coors[-1][1] + dy
+            coors.append([x, y])
+        
+        # ----------
+        # 3
+        # Aqui termine de obtener las coordenadas de los nodos que componen la fibra
+        # si la fibra es muy corta la voy a descartar
+        # para eso calculo su longitud de contorno
+        # (luego la fibra se recorta asi que va a disminuir un poco)
+        loco = ls * float(len(coors) - 1) 
+        if loco < 0.3 * L:
+            return -1
+        # Voy a ensamblar la fibra como concatenacion de segmentos, que a su vez son concatenacion de dos nodos
+        f_con = list()
+        # agrego el primer nodo a la conectividad de nodos
+        self.nods.add_nodo(coors[0], 1)
+        for coor in coors[1:]:  # reocrro los nodos desde el nodo 1 (segundo nodo)
+            self.nods.add_nodo(coor, 0)
+            nnods = len(self.nods)
+            s0 = [nnods - 2, nnods - 1]
+            self.segs.add_segmento(s0, self.nods.r)
+            nsegs = len(self.segs)
+            f_con.append(nsegs - 1)
+        # al final recorto la fibra y la almaceno
+        self.nods.tipos[-1] = 1
+        self.fibs.add_fibra(f_con, ls, D, dth, loco)
+        # trim la fibra recientemente agregada (en la numeracion es la ultima)
+        self.trim_fibra_at_frontera(len(self.fibs.con) - 1)  
+        # ----------
+
+        # fin
+        return len(self.fibs.con) - 1  # devuelvo el indice de la fibra
 
     def calcular_loco_de_una_fibra(self, f):
         """ calcula la longitud de contorno de una fibra """
@@ -91,8 +201,8 @@ class Mallacom(object):
     def calcular_volumen_de_una_fibra(self, f):
         """ calcula el volumen ocupado por una fibra """
         loco = self.calcular_loco_de_una_fibra(f)
-        d = self.fibs.ds[f]
-        return loco * np.pi * d * d / 4.
+        D = self.fibs.D[f]
+        return loco * PI * D * D / 4.
 
     def calcular_fraccion_de_volumen_de_una_capa(self, capcon):
         """ calcula la fraccion de volumen de una capa como
@@ -103,7 +213,9 @@ class Mallacom(object):
             volf = self.calcular_volumen_de_una_fibra(f)
             volfs += volf
         # el volumen total de la capa es:
-        volc = self.L * self.L * self.Dm
+        # TODO: el calculo deberia hacerse con los parametros de la capa
+        # pero esos no estan disponibles ahora mismo, deberia guardarlos en la capa
+        volc = self.params['L']**2 * self.params['D']
         # luego la fraccion de volumen
         fracvol = volfs / volc
         return fracvol
@@ -117,8 +229,8 @@ class Mallacom(object):
         r0 = self.nods.r[n0]
         r1 = self.nods.r[n1]
         theta_2pi = calcular_angulo_de_segmento(r0, r1)
-        if theta_2pi >= np.pi:
-            theta = theta_2pi - np.pi
+        if theta_2pi >= PI:
+            theta = theta_2pi - PI
         else:
             theta = theta_2pi
         if theta_2pi < 0.:
@@ -127,11 +239,11 @@ class Mallacom(object):
 
     @staticmethod
     def get_cuadrante_theta_0_pi(theta):
-        if theta < np.pi * 1.0e-8:
+        if theta < PI * 1.0e-8:
             return -1  # direccion horizontal
-        elif np.abs(theta - np.pi * 0.5) < 1.0e-8:
+        elif np.abs(theta - PI * 0.5) < 1.0e-8:
             return -2  # direccion vertical
-        elif theta < np.pi * 0.5:
+        elif theta < PI * 0.5:
             return 1  # primer cuadrante
         else:
             return 2  # segundo cuadrante
@@ -162,128 +274,45 @@ class Mallacom(object):
             if b0 in (0, 2):
                 raise Exception('Fibra horizontal alineada con borde!') 
             elif b0 == 1:
-                theta = np.pi
+                theta = PI
             else:  # b0 == 3
                 theta = 0.
         elif cuad == -2:  # fibra vertical
             if b0 in (1, 3):
                 raise Exception('Fibra vertical alineada con borde!')
             elif b0 == 0:
-                theta = 0.5 * np.pi
+                theta = 0.5 * PI
             else:  # b0 == 2
-                theta = 1.5 * np.pi
+                theta = 1.5 * PI
         elif cuad == 1:  # primer cuadrante
             if b0 in (0, 3):
                 theta = th_0pi
             else:  # b0 in(1,2)
-                theta = th_0pi + np.pi
+                theta = th_0pi + PI
         else:  # cuad == 2 segundo cuadrante
             if b0 in (0, 1):
                 theta = th_0pi
             else:  # b0 in (2,3)
-                theta = th_0pi + np.pi
+                theta = th_0pi + PI
         return theta
-
-    def make_fibra(self, dl, d, dtheta, orient_distr=None):
-        """ tengo que armar una lista de segmentos
-        nota: todos los indices (de nodos, segmentos y fibras)
-        son globales en la malla, cada nodo nuevo tiene un indice +1 del anterior
-        idem para segmentos y fibras
-        los indices de los nodos, de los segmentos y de las fibras van por separado
-        es decir que hay un nodo 1, un segmento 1 y una fibra 1
-        pero no hay dos de misma especie que compartan indice """
-        # ---
-        # primero hago un segmento solo
-        # para eso pongo un punto sobre la frontera del rve y el otro lo armo con un desplazamiento recto
-        # tomo un angulo random entre 0 y pi, saliente del borde hacia adentro del rve
-        # eso me da un nuevo segmento
-        # agrego todas las conectividades
-        # ---
-        # Voy a ir guardando en una lista las coordenadas de los nodos
-        coors = list()
-        # Armo el primer segmento
-        # primero busco un nodo en el contorno
-        (x0, y0), b0 = self.marco.get_punto_random()
-        if orient_distr is None:
-            theta_fibra = np.random.rand() * np.pi
-        else:
-            theta_fibra = orient_distr()
-        # me fijo que la orientacion caiga en el rango periodico [0,pi)
-        if theta_fibra == np.pi:
-            theta_fibra = 0.
-        elif theta_fibra > np.pi:
-            raise ValueError("theta_fibra de una fibra no comprendido en [0,pi)")
-        # veo el cuadrante (-1: 0=hor, -2: pi/2=vert, 1: <pi/2, 2: >pi/2)
-        cuad = self.get_cuadrante_theta_0_pi(theta_fibra)
-        # ahora me fijo la relacion entre cuadrante y borde
-        check = self.check_if_fibra_alineada_a_borde(cuad, b0)
-        if check == -1:
-            return -1 # esta fibra no vale, esta alineada al borde
-        else: 
-            theta = self.get_theta_2pi(theta_fibra, cuad, b0)
-        # ya tengo el angulo del segmento
-        dx = dl * np.cos(theta)
-        dy = dl * np.sin(theta)
-        coors.append([x0, y0])
-        coors.append([x0 + dx, y0 + dy])
-        # ahora agrego nuevos nodos en un bucle
-        # cada iteracion corresponde a depositar un nuevo segmento
-        n = 1
-        while True:
-            # si el nodo anterior ha caido fuera del rve ya esta la fibra
-            if self.check_fuera_del_RVE(coors[-1]):
-                break
-            n += 1
-            # de lo contrario armo un nuevo segmento a partir del ultimo nodo
-            # el angulo puede sufrir variacion
-            theta = theta + dtheta * (2.0 * np.random.rand() - 1.0)
-            # desplazamiento:
-            dx = dl * np.cos(theta)
-            dy = dl * np.sin(theta)
-            # nuevo nodo
-            x = coors[-1][0] + dx
-            y = coors[-1][1] + dy
-            coors.append([x, y])
-        # -
-        # Aqui termine de obtener las coordenadas de los nodos que componen la fibra
-        # si la fibra es muy corta la voy a descartar
-        # para eso calculo su longitud de contorno
-        loco = dl * float(len(coors) - 1)  # esto es aproximado porque el ultimo segmento se recorta
-        if loco < 0.3 * self.L:
-            return -1
-        # Voy a ensamblar la fibra como concatenacion de segmentos, que a su vez son concatenacion de dos nodos
-        f_con = list()
-        # agrego el primer nodo a la conectividad de nodos
-        self.nods.add_nodo(coors[0], 1)
-        for coor in coors[1:]:  # reocrro los nodos desde el nodo 1 (segundo nodo)
-            self.nods.add_nodo(coor, 0)
-            nnods = len(self.nods)
-            s0 = [nnods - 2, nnods - 1]
-            self.segs.add_segmento(s0, self.nods.r)
-            nsegs = len(self.segs)
-            f_con.append(nsegs - 1)
-        # al final recorto la fibra y la almaceno
-        self.nods.tipos[-1] = 1
-        self.trim_fibra_at_frontera(f_con)  # lo comento porque a veces quedan segmentos super pequenos
-        self.fibs.add_fibra(f_con, dl, d, dtheta)
-        return len(self.fibs.con) - 1  # devuelvo el indice de la fibra
 
     def check_fuera_del_RVE(self, r):
         x = r[0]
         y = r[1]
-        if x <= 0 or x >= self.L or y <= 0 or y >= self.L:
+        L = self.params['L']
+        if x <= 0 or x >= L or y <= 0 or y >= L:
             return True
         else:
             return False
 
-    def trim_fibra_at_frontera(self, fib_con):
+    def trim_fibra_at_frontera(self, j):
         """ subrutina para cortar la fibra que ha salido del rve """
         # debo cortar la ultima fibra en su interseccion por el rve
         # para eso calculo las intersecciones de los nodos con los bordes
         # coordenadas del ultimo segmento de la fibra de conectividad fib_con
+        fib_con = self.fibs.con[j]
         s = fib_con[-1]
-        rs0 = self.nods.r[self.segs.con[s][0]]  # coordenadas xy del nodo 0 del segmento s
-        rs1 = self.nods.r[self.segs.con[s][1]]  # coordenadas xy del nodo 1 del segmento s
+        rs0, rs1 = self.nods.r[self.segs.con[s]]  # coordenadas xy de los nodos del segmento s
         # pruebo con cada borde
         for b in range(4):  # recorro los 4 bordes
             # puntos del borde en cuestion
@@ -310,6 +339,29 @@ class Mallacom(object):
                     # y en ese caso no hay nada que hacer! puesto que el nodo ya esta en el borde
                     # TODO: programar este caso, no es complicado
                     pass
+
+    def mover_nodo(self, n, s, f, new_r):
+        """
+        muevo un nodo (cambio su posicion), para eso tambien doy 
+        a que segmentos y a que fibras (puede ser mas de 1?) pertenece
+
+        Args:
+            n: integer, indice del nodo
+            s: lista de int con indices de segmentos
+            f: lista de int con indices de fibras
+
+        Returns:
+            nada, solo muta a los nodos, segmentos y fibras
+        """
+        self.nods.r[n] = new_r 
+        old_longs = []
+        new_longs = []
+        for js in s:
+            # para cada segmento varia su long y theta (este metodo lo arregla)
+            self.segs.actualizar_segmento(js, self.nods.r)
+        for jf in f: 
+            # para la fibra solo cambia su longitud de contorno (loco)
+
 
     def cambiar_capas(self, new_ncapas):
         """ un mapeo de las fibras en un numero de capas diferente """
@@ -375,8 +427,8 @@ class Mallacom(object):
             phis = rec_orientaciones
         phis = np.array(phis, dtype=float)
         #
-        conteo, x_edges = np.histogram(phis, bins=n, range=(0., np.pi))
-        delta = (np.pi - 0.) / float(n)
+        conteo, x_edges = np.histogram(phis, bins=n, range=(0., PI))
+        delta = (PI - 0.) / float(n)
         # pdf = conteo / float(np.sum(conteo)) / delta
         x = x_edges[:-1] + 0.5 * delta
         return x, delta, conteo
@@ -560,13 +612,13 @@ class Mallacom(object):
     def guardar_en_archivo(self, archivo="Malla.txt"):
         fid = open(archivo, "w")
         # ---
-        # primero escribo L, dl y dtheta
+        # primero escribo L, ls y dtheta
         fid.write("*Parametros (L, Dm, volfrac, ls, devangmax) \n")
-        fid.write("{:20.8f}\n".format(self.L))
-        fid.write("{:20.8f}\n".format(self.Dm))
-        fid.write("{:20.8f}\n".format(self.volfrac))
-        fid.write("{:20.8f}\n".format(self.ls))
-        fid.write("{:20.8f}\n".format(self.devangmax * 180. / np.pi))  # lo escribo en grados
+        fid.write("{:20.8f}\n".format(self.params['L']))
+        fid.write("{:20.8f}\n".format(self.params['D']))
+        fid.write("{:20.8f}\n".format(self.params['vf']))
+        fid.write("{:20.8f}\n".format(self.params['ls']))
+        fid.write("{:20.8f}\n".format(self.params['dth'] * 180. / PI))  # lo escribo en grados
         # ---
         # escribo los nodos: indice, tipo, y coordenadas
         dString = "*Coordenadas \n" + str(len(self.nods.r)) + "\n"
@@ -586,13 +638,13 @@ class Mallacom(object):
             dString = fmt.format(s, n0, n1) + "\n"
             fid.write(dString)
         # ---
-        # sigo con las fibras: indice, dl, d, dtheta, nsegs_f, y segmentos (conectividad)
+        # sigo con las fibras: indice, ls, d, dtheta, nsegs_f, y segmentos (conectividad)
         dString = "*Fibras \n" + str(len(self.fibs.con)) + "\n"
         fid.write(dString)
         for f, fcon in enumerate(self.fibs.con):
             dString = "{:12d}".format(f)  # indice
-            dString += "{:17.8e}{:17.8e}{:17.8e}".format(self.fibs.dls[f], self.fibs.ds[f],
-                                                         self.fibs.dthetas[f])  # dl, d y dtheta
+            dString += "{:17.8e}{:17.8e}{:17.8e}".format(self.fibs.dl[f], self.fibs.D[f],
+                                                         self.fibs.dth[f])  # ls, d y dtheta
             dString += "{:12d}".format(len(fcon))  # numero de segmentos en la fibra
             dString += "".join("{:12d}".format(val) for val in fcon) + "\n"  # conectividad
             fid.write(dString)
@@ -621,13 +673,13 @@ class Mallacom(object):
             volfrac = int(volfrac + .5)
         ls = float(next(fid))
         devangmax = float(next(fid))  # en grados
-        devangmax = devangmax * np.pi / 180.
+        devangmax = devangmax * PI / 180.
         # luego busco coordenadas
         target = "*coordenadas"
         _ierr = find_string_in_file(fid, target, True)
         num_r = int(next(fid))
-        coors = list()
-        tipos = list()
+        coors = []
+        tipos = []
         for i in range(num_r):
             _j, t, x, y = (float(val) for val in next(fid).split())
             tipos.append(int(t))
@@ -636,7 +688,7 @@ class Mallacom(object):
         target = "*segmentos"
         _ierr = find_string_in_file(fid, target, True)
         num_s = int(next(fid))
-        segs = list()
+        segs = []
         for i in range(num_s):
             _j, n0, n1 = (int(val) for val in next(fid).split())
             segs.append([n0, n1])
@@ -644,27 +696,27 @@ class Mallacom(object):
         target = "*fibras"
         _ierr = find_string_in_file(fid, target, True)
         num_f = int(next(fid))
-        fibs = list()
-        dls = list()
-        ds = list()
-        dthetas = list()
+        fibs = []
+        lss = []
+        ds = []
+        dthetas = []
         for i in range(num_f):
             svals = next(fid).split()
             _j = int(svals[0])
-            dl = float(svals[1])
+            ls = float(svals[1])
             d = float(svals[2])
             dtheta = float(svals[3])
             # _nsegsf = int(svals[4])  # unused
             fcon = [int(val) for val in svals[5:]]
             fibs.append(fcon)
-            dls.append(dl)
+            lss.append(ls)
             ds.append(d)
             dthetas.append(dtheta)
         # luego la capas
         target = "*capas"
         _ierr = find_string_in_file(fid, target, True)
         num_c = int(next(fid))
-        caps = list()
+        caps = []
         for c in range(num_c):
             svals = next(fid).split()
             _j = int(svals[0])
@@ -672,7 +724,15 @@ class Mallacom(object):
             ccon = [int(val) for val in svals[2:]]
             caps.append(ccon)
         # ahora que tengo todo armo el objeto
-        malla = cls(L, Dm, volfrac, ls, devangmax)
+        params = {
+            'L': L,
+            'D': Dm, 
+            'vf': volfrac, 
+            'ls': ls,
+            'dth': devangmax,
+            'nc': num_c
+        }
+        malla = cls(**params)
         # le asigno los nodos
         for i in range(num_r):
             malla.nods.add_nodo(coors[i], tipos[i])
@@ -687,10 +747,10 @@ class Mallacom(object):
         # le asigno las fibras
         for i in range(num_f):
             f_con = fibs[i]
-            dl = dls[i]
+            ls = lss[i]
             d = ds[i]
             dtheta = dthetas[i]
-            malla.fibs.add_fibra(f_con, dl, d, dtheta)
+            malla.fibs.add_fibra(f_con, ls, d, dtheta)
         # le asigno las capas
         for c in range(num_c):
             c_con = caps[c]
@@ -772,7 +832,7 @@ class Mallacom(object):
         elif color_por == "capa":
             sm = plt.cm.ScalarMappable(cmap=mi_colormap, norm=plt.Normalize(vmin=0, vmax=len(self.caps.con) - 1))
         elif color_por == "angulo":
-            sm = plt.cm.ScalarMappable(cmap=mi_colormap, norm=plt.Normalize(vmin=0, vmax=np.pi))
+            sm = plt.cm.ScalarMappable(cmap=mi_colormap, norm=plt.Normalize(vmin=0, vmax=PI))
         # dibujo las fibras (los segmentos)
         # preparo las listas, una lista para cada fibra
         xx = [list() for f in self.fibs.con]

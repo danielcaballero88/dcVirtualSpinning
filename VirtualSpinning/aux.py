@@ -3,8 +3,12 @@ algunas son algebraicas
 otras con de manejo de archivos
 es una mezcla que resulta util tener por separado """
 
+
 import numpy as np
 from scipy import stats
+
+
+PI = np.pi
 
 
 def find_string_in_file(fid, target, mandatory=False):
@@ -48,21 +52,23 @@ def calcular_angulo_de_segmento(r0, r1):
         if iguales(dy, 0.):  # segmento nulo
             raise ValueError("Error, segmento de longitud nula!!")
         elif dy > 0.:  # segmento hacia arriba
-            return 0.5 * np.pi
+            ang = 0.5 * PI
         else:  # segmento hacia abajo
-            return -0.5 * np.pi
+            ang = - 0.5 * PI
     elif iguales(dy, 0.):  # segmento horizontal
         if dx > 0.:  # hacia derecha
-            return 0.
+            ang = 0.0
         else:  # hacia izquierda
-            return np.pi
+            ang = PI
     else:  # segmento oblicuo
         if dx < 0.:  # segundo o tercer cuadrante
-            return np.pi + np.arctan(dy / dx)
+            ang = PI + np.arctan(dy / dx)
         elif dy > 0.:  # primer cuadrante
-            return np.arctan(dy / dx)
+            ang = np.arctan(dy / dx)
         else:  # cuarto cuadrante
-            return 2. * np.pi + np.arctan(dy / dx)
+            ang = 2.0 * PI + np.arctan(dy / dx)
+    # fin
+    return ang
 
 
 def calcular_interseccion_entre_segmentos(r00, r01, r10, r11):
@@ -83,7 +89,7 @@ def calcular_interseccion_entre_segmentos(r00, r01, r10, r11):
     # chequeo paralelismo
     theta0 = calcular_angulo_de_segmento(r00, r01)
     theta1 = calcular_angulo_de_segmento(r10, r11)
-    paralelos = iguales(theta0, theta1, np.pi * 1.0e-8)
+    paralelos = iguales(theta0, theta1, PI * 1.0e-8)
     if paralelos:
         return None  # no hay chance de interseccion porque son paralelos los segmentos
     # ---
@@ -113,14 +119,14 @@ def calcular_interseccion_entre_segmentos(r00, r01, r10, r11):
     # calculo los angulos
     theta_rel = theta1 - theta0
     while True:  # ahora me fijo que quede en el rango [0 , 2pi)
-        if theta_rel >= 0. and theta_rel < 2. * np.pi:
+        if theta_rel >= 0. and theta_rel < 2. * PI:
             break
-        elif theta_rel >= 2. * np.pi:
-            theta_rel -= 2. * np.pi
+        elif theta_rel >= 2. * PI:
+            theta_rel -= 2. * PI
         elif theta_rel < 0.:
-            theta_rel += 2. * np.pi
+            theta_rel += 2. * PI
     # me fijo que j1 no sea verticales en el sistema intrinseco a j0 (para no manejar pendientes infinitas luego)
-    m_rel_inf = iguales(theta_rel, np.pi * 0.5, np.pi * 1.0e-8) or iguales(theta_rel, np.pi * 1.5, np.pi * 1.0e-8)
+    m_rel_inf = iguales(theta_rel, PI * 0.5, PI * 1.0e-8) or iguales(theta_rel, PI * 1.5, PI * 1.0e-8)
     # coordenadas en (chi,eta) de los nodos del segmento j1
     C0 = np.cos(theta0)
     S0 = np.sin(theta0)
@@ -130,9 +136,9 @@ def calcular_interseccion_entre_segmentos(r00, r01, r10, r11):
         eta = -(x - x00) * S0 + (y - y00) * C0
         return chi, eta
 
-    chi_01, eta_01 = cambio_de_coordenadas(x01, y01)
+    chi_01, _eta_01 = cambio_de_coordenadas(x01, y01)
     chi_10, eta_10 = cambio_de_coordenadas(x10, y10)
-    chi_11, eta_11 = cambio_de_coordenadas(x11, y11)
+    _chi_11, eta_11 = cambio_de_coordenadas(x11, y11)
 
     # chequeo que el segmento 1 realmente corte al eje del 2
     if np.sign(eta_10) == np.sign(eta_11):
