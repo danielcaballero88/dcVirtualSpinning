@@ -4,6 +4,9 @@
 # vscode
 .vscode/
 
+# temporal folders
+temp/
+
 # -- --------------------- --
 # -- Automatic from github --
 

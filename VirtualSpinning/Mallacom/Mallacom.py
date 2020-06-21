@@ -162,7 +162,8 @@ class Mallacom(object):
         # Aqui termine de obtener las coordenadas de los nodos que componen la fibra
         # si la fibra es muy corta la voy a descartar
         # para eso calculo su longitud de contorno
-        loco = ls * float(len(coors) - 1)  # esto es aproximado porque el ultimo segmento se recorta
+        # (luego la fibra se recorta asi que va a disminuir un poco)
+        loco = ls * float(len(coors) - 1) 
         if loco < 0.3 * L:
             return -1
         # Voy a ensamblar la fibra como concatenacion de segmentos, que a su vez son concatenacion de dos nodos
@@ -178,8 +179,9 @@ class Mallacom(object):
             f_con.append(nsegs - 1)
         # al final recorto la fibra y la almaceno
         self.nods.tipos[-1] = 1
-        self.trim_fibra_at_frontera(f_con)  # lo comento porque a veces quedan segmentos super pequenos
-        self.fibs.add_fibra(f_con, ls, D, dth)
+        self.fibs.add_fibra(f_con, ls, D, dth, loco)
+        # trim la fibra recientemente agregada (en la numeracion es la ultima)
+        self.trim_fibra_at_frontera(len(self.fibs.con) - 1)  
         # ----------
 
         # fin
@@ -303,14 +305,14 @@ class Mallacom(object):
         else:
             return False
 
-    def trim_fibra_at_frontera(self, fib_con):
+    def trim_fibra_at_frontera(self, j):
         """ subrutina para cortar la fibra que ha salido del rve """
         # debo cortar la ultima fibra en su interseccion por el rve
         # para eso calculo las intersecciones de los nodos con los bordes
         # coordenadas del ultimo segmento de la fibra de conectividad fib_con
+        fib_con = self.fibs.con[j]
         s = fib_con[-1]
-        rs0 = self.nods.r[self.segs.con[s][0]]  # coordenadas xy del nodo 0 del segmento s
-        rs1 = self.nods.r[self.segs.con[s][1]]  # coordenadas xy del nodo 1 del segmento s
+        rs0, rs1 = self.nods.r[self.segs.con[s]]  # coordenadas xy de los nodos del segmento s
         # pruebo con cada borde
         for b in range(4):  # recorro los 4 bordes
             # puntos del borde en cuestion
@@ -337,6 +339,29 @@ class Mallacom(object):
                     # y en ese caso no hay nada que hacer! puesto que el nodo ya esta en el borde
                     # TODO: programar este caso, no es complicado
                     pass
+
+    def mover_nodo(self, n, s, f, new_r):
+        """
+        muevo un nodo (cambio su posicion), para eso tambien doy 
+        a que segmentos y a que fibras (puede ser mas de 1?) pertenece
+
+        Args:
+            n: integer, indice del nodo
+            s: lista de int con indices de segmentos
+            f: lista de int con indices de fibras
+
+        Returns:
+            nada, solo muta a los nodos, segmentos y fibras
+        """
+        self.nods.r[n] = new_r 
+        old_longs = []
+        new_longs = []
+        for js in s:
+            # para cada segmento varia su long y theta (este metodo lo arregla)
+            self.segs.actualizar_segmento(js, self.nods.r)
+        for jf in f: 
+            # para la fibra solo cambia su longitud de contorno (loco)
+
 
     def cambiar_capas(self, new_ncapas):
         """ un mapeo de las fibras en un numero de capas diferente """

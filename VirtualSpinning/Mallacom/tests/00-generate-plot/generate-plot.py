@@ -15,17 +15,17 @@ def main():
     print('CWD: ', CWD)
     print('DIR: ', DIR)
     print('__file__: ', FILE)
-    Dm = 1.
-    L = 100. * Dm
-    fundisor = None
-    dl = 5. * Dm
-    devang = 10. * pi / 180.
-    volfrac = 0.1
-    ncaps = 2
-    mc = Mallacom(L, Dm, volfrac, dl, devang, ncaps)
-    for _i in range(1, ncaps + 1):
-        mc.make_capa(fdo=fundisor)
-    archivo = DIR / 'malla_test_basic.txt'
+    D = 1.
+    L = 100. * D
+    fdo = None
+    ls = 5. * D
+    dth = 10. * pi / 180.
+    vf = 0.1
+    nc = 2
+    mc = Mallacom(L, D, vf, ls, dth, nc)
+    for _i in range(1, nc + 1):
+        mc.make_capa(fdo=fdo)
+    archivo = DIR / 'temp' / 'malla_generate-plot.txt'
     mc.guardar_en_archivo(archivo)
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(111)

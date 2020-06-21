@@ -20,14 +20,14 @@ def main():
     Dm = 1.
     L = 100. * Dm
     fundisor = odf.NormTr(n=100, loc=.5*pi, scale=.1*pi, lower=0., upper=pi)
-    dl = 5. * Dm
+    ls = 5. * Dm
     devang = 10. * pi / 180.
     volfrac = 0.1
     ncaps = 2
-    mc = Mallacom(L, Dm, volfrac, dl, devang)
+    mc = Mallacom(L, Dm, volfrac, ls, devang, ncaps)
     for _i in range(1, ncaps + 1):
-        mc.make_capa(dl, Dm, devang, volfrac, orient_distr=fundisor)
-    archivo = DIR / 'malla_generate-aligned.txt'
+        mc.make_capa(fdo=fundisor)
+    archivo = DIR / 'temp' / 'malla_generate-aligned.txt'
     mc.guardar_en_archivo(archivo)
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(111)
