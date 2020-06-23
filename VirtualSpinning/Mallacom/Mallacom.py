@@ -305,27 +305,31 @@ class Mallacom(object):
         else:
             return False
 
-    def trim_fibra_at_frontera(self, j):
-        """ subrutina para cortar la fibra que ha salido del rve """
-        # debo cortar la ultima fibra en su interseccion por el rve
-        # para eso calculo las intersecciones de los nodos con los bordes
-        # coordenadas del ultimo segmento de la fibra de conectividad fib_con
-        fib_con = self.fibs.con[j]
-        s = fib_con[-1]
-        rs0, rs1 = self.nods.r[self.segs.con[s]]  # coordenadas xy de los nodos del segmento s
+    def trim_fibra_at_frontera(self, fib):
+        """ 
+        subrutina para cortar la fibra que ha salido del rve 
+        debo cortar la ultima fibra en su interseccion por el rve
+        para eso calculo las intersecciones de los nodos con los bordes
+        coordenadas del ultimo segmento de la fibra de conectividad fib_con
+        """
+
+        # obtengo los indices de segmento y nodos
+        fib_con = self.fibs.con[fib]
+        seg = fib_con[-1] # ultimo segmento de la fibra
+        n0, n1 = seg_con = self.segs.con[seg] # nodos de seg
+        r0, r1 = self.nods.r[seg_con]  # coordenadas xy de los nodos del segmento s
         # pruebo con cada borde
         for b in range(4):  # recorro los 4 bordes
             # puntos del borde en cuestion
             rb0, rb1 = self.marco.get_side_nodes(b) # coordenadas xy de los dos nodos del borde b
-            interseccion = calcular_interseccion(rs0, rs1, rb0, rb1)
+            interseccion = calcular_interseccion(r0, r1, rb0, rb1)
             if interseccion is None:  # no hubo interseccion
                 continue  # con este borde no hay interseccion, paso al que sigue
             else:  # hubo interseccion
                 in_r, in_tipo, *_ = interseccion
                 if in_tipo == 2:  # interseccion en el medio
                     try:  # tengo que mover el ultimo nodo y por lo tanto cambia el segmento
-                        self.segs.mover_nodo(s, 1, self.nods.r, in_r)
-                        rs1 = in_r
+                        self.mover_ultimo_nodo(n1, in_r, 0)
                     except ValueError as err:
                         # TODO: limpiar esto por el amor de la virgen y todos los santos
                         print("Error en trim_fibra_at_frontera")
@@ -340,27 +344,56 @@ class Mallacom(object):
                     # TODO: programar este caso, no es complicado
                     pass
 
-    def mover_nodo(self, n, s, f, new_r):
+    def mover_ultimo_nodo(self, n, new_r, trimlen=0):
+        """
+        Se mueve el ultimo nodo de una fibra, 
+        con la ventaja de saber que corresponde a un solo segmento
+        y a una sola fibra
+        """
+
+        # cambio las coordenadas del nodo
+        self.nods.r[n] = new_r 
+        
+        # obtengo el segmento conectado al nodo 
+        seg = self.segs.conT[n] 
+        self.segs.actualizar_segmento(seg, self.nods.r)
+
+        # obtengo la fibra conectada al segmento (y por ende al nodo) 
+        fib = self.fibs.conT[seg]
+        self.fibs.loco[fib] -= trimlen
+
+
+    def mover_nodo(self, n, new_r):
         """
         muevo un nodo (cambio su posicion), para eso tambien doy 
         a que segmentos y a que fibras (puede ser mas de 1?) pertenece
 
         Args:
             n: integer, indice del nodo
-            s: lista de int con indices de segmentos
-            f: lista de int con indices de fibras
 
         Returns:
-            nada, solo muta a los nodos, segmentos y fibras
+            None, solo muta a los nodos, segmentos y fibras
         """
-        self.nods.r[n] = new_r 
-        old_longs = []
-        new_longs = []
-        for js in s:
-            # para cada segmento varia su long y theta (este metodo lo arregla)
-            self.segs.actualizar_segmento(js, self.nods.r)
-        for jf in f: 
-            # para la fibra solo cambia su longitud de contorno (loco)
+        
+        # cambio la posicion del nodo
+        self.nods.r[n] = new_r
+        
+        # obtengo los segmentos conectados al nodo n
+        segs = self.segs.conT[n]
+        # actualizo datos en los segmenos
+        for seg in segs:
+            self.segs.actualizar_segmento(seg, self.nods.r)
+        
+        # obtengo las fibras conectadas al nodo n
+        fibs = []
+        for seg in segs: 
+            for fib in self.segs.conT[seg] : 
+                if fib not in fibs: 
+                    fibs.append(fib)
+        # actualizo los datos en las fibras
+        for fib in fibs: 
+            # TODO: tengo que calcular su nueva longitud de contorno 
+            raise NotImplementedError
 
 
     def cambiar_capas(self, new_ncapas):

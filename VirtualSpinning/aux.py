@@ -11,6 +11,14 @@ from scipy import stats
 PI = np.pi
 
 
+def append_to_keys(dic, keys, val):
+    for key in keys:
+        if key in dic: 
+            dic[key].append(val) 
+        else: 
+            dic[key] = [val]
+
+
 def find_string_in_file(fid, target, mandatory=False):
     fid.seek(0)  # rewind
     target = target.lower()

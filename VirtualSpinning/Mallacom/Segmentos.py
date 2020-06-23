@@ -1,6 +1,7 @@
 import numpy as np
-from VirtualSpinning.aux import iguales, calcular_angulo_de_segmento
-
+from VirtualSpinning.aux import iguales
+from VirtualSpinning.aux import calcular_angulo_de_segmento
+from VirtualSpinning.aux import append_to_keys
 
 class Segmentos(object):
     """
@@ -9,12 +10,11 @@ class Segmentos(object):
     """
 
     def __init__(self):
+        self.num = 0
         self.con = []  # lista de listas de dos nodos (indices)
+        self.conT = {} # dict de listas con los segmentos que tienen cada nodo
         self.thetas = []
         self.longs = []
-
-    def __getitem__(self, item):
-        return self.con[item]
 
     def __len__(self):
         return len(self.con)
@@ -27,7 +27,9 @@ class Segmentos(object):
         (con todos los nodos hasta el momento de crear este segmento esta bien,
         alcanza con que esten presentes en la lista los dos nodos de seg_con)
         intersec indica si el segmento ha sido intersectado aun o no"""
+        self.num += 1
         self.con.append(seg_con)
+        append_to_keys(dic=self.conT, keys=seg_con, val=self.num-1)
         self.calc_long(j=-1, coors=coors, new=True)
         self.calc_theta(j=-1, coors=coors, new=True)
 
@@ -36,26 +38,16 @@ class Segmentos(object):
         self.calc_long(j, coors) 
         self.calc_theta(j, coors)
 
-    # def mover_nodo(self, j, n, coors, new_r):
-    #     """ mueve un nodo del segmento
-    #     coors es una lista, es un objeto mutable
-    #     por lo que al salir de este metodo se va ver modificada
-    #     es decir, es un puntero
-    #     j es el indice del segmento a moverle un nodo
-    #     n es el indice del nodo para el segmento: 0 es inicial, 1 es final """
-    #     assert n in (0, 1)
-    #     nglobal = self.con[j][n]
-    #     coors[nglobal] = new_r  # se lo modifica resida donde resida (normalmente en un objeto nodos)
-    #     self.actualizar_segmento(j, coors)
-
-    def cambiar_conectividad(self, j, new_con, coors):
-        """ se modifica la conectividad de un segmento (j) de la lista
-        se le da la nueva conectividad new_con
-        y por lo tanto se vuelve a calcular su angulo y longitud
-        (util para dividir segmentos en 2) """
-        self.con[j] = new_con
-        self.calc_long(j, coors) 
-        self.calc_theta(j, coors)
+    # def cambiar_conectividad(self, j, new_con, coors):
+    #     """ se modifica la conectividad de un segmento (j) de la lista
+    #     se le da la nueva conectividad new_con
+    #     y por lo tanto se vuelve a calcular su angulo y longitud
+    #     (util para dividir segmentos en 2) """
+    #     # cambio la conectividad 
+    #     self.con[j] = new_con
+    #     # TODO: cambiar la conectividad traspuesta
+    #     self.calc_long(j, coors) 
+    #     self.calc_theta(j, coors)
 
     def calc_long(self, j, coors, new=False):
         """
