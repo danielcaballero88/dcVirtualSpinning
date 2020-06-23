@@ -17,17 +17,25 @@ def main():
     print('CWD: ', CWD)
     print('DIR: ', DIR)
     print('__file__: ', FILE)
-    Dm = 1.
-    L = 100. * Dm
-    fundisor = odf.NormTr(n=100, loc=.5*pi, scale=.1*pi, lower=0., upper=pi)
-    ls = 5. * Dm
-    devang = 10. * pi / 180.
-    volfrac = 0.1
-    ncaps = 2
-    mc = Mallacom(L, Dm, volfrac, ls, devang, ncaps)
-    for _i in range(1, ncaps + 1):
-        mc.make_capa(fdo=fundisor)
-    archivo = DIR / 'temp' / 'malla_generate-aligned.txt'
+    D = 1.
+    L = 100. * D
+    fdo = odf.NormTr(n=100, loc=.5*pi, scale=.1*pi, lower=0., upper=pi)
+    ls = 5. * D
+    dth = 10. * pi / 180.
+    vf = 0.1
+    nc = 2
+    params = {
+        'L': L,
+        'D': D,
+        'vf': vf,
+        'ls': ls,
+        'dth': dth,
+        'nc': nc,
+        'fdo': fdo,
+        'nm': 1
+    }
+    mc = Mallacom(**params, name='malla_generate-aligned')
+    archivo = DIR / 'temp' / f'{mc.name}.txt'
     mc.guardar_en_archivo(archivo)
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(111)

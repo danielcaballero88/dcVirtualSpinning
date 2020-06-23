@@ -22,10 +22,18 @@ def main():
     dth = 10. * pi / 180.
     vf = 0.1
     nc = 2
-    mc = Mallacom(L, D, vf, ls, dth, nc)
-    for _i in range(1, nc + 1):
-        mc.make_capa(fdo=fdo)
-    archivo = DIR / 'temp' / 'malla_generate-plot.txt'
+    params = {
+        'L': L,
+        'D': D,
+        'vf': vf,
+        'ls': ls,
+        'dth': dth,
+        'nc': nc,
+        'fdo': fdo,
+        'nm': 1
+    }
+    mc = Mallacom(**params, name='malla_generate-plot')
+    archivo = DIR / 'temp' / f'{mc.name}.txt'
     mc.guardar_en_archivo(archivo)
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(111)

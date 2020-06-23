@@ -21,7 +21,8 @@ PI = np.pi
 
 
 class Mallacom(object):
-    def __init__(self, L, D, vf, ls, dth, nc, fdo=None):
+    def __init__(self, L, D, vf, ls, dth, nc, fdo=None, nm=1, name='malla'):
+        self.name = name
         self.params = {
             'L': L,
             'D': D,
@@ -29,13 +30,15 @@ class Mallacom(object):
             'ls': ls,
             'dth': dth,
             'fdo': fdo,
-            'nc': nc
+            'nc': nc,
+            'nm': nm
         }
         self.caps = Capas()  # lista vacia
         self.fibs = Fibras()  # lista vacia
         self.segs = Segmentos()  # lista vacia
         self.nods = Nodos()  # tiene dos listas vacias
         self.marco = Marco(L)
+        self.make_malla()
 
     def make_malla(self):
         """
