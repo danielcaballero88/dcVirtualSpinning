@@ -187,20 +187,21 @@ class Mallacom(object):
         # fin
         return len(self.fibs.con) - 1  # devuelvo el indice de la fibra
 
-    def calcular_loco_de_una_fibra(self, f):
-        """ calcula la longitud de contorno de una fibra """
-        loco = 0.
-        for seg in self.fibs.con[f]:
-            n0, n1 = self.segs.con[seg]
-            r0 = self.nods.r[n0]
-            r1 = self.nods.r[n1]
-            lseg = calcular_longitud_de_segmento(r0, r1)
-            loco += lseg
-        return loco
+    # def calcular_loco_de_una_fibra(self, f):
+    #     """ calcula la longitud de contorno de una fibra """
+    #     loco = 0.
+    #     for seg in self.fibs.con[f]:
+    #         n0, n1 = self.segs.con[seg]
+    #         r0 = self.nods.r[n0]
+    #         r1 = self.nods.r[n1]
+    #         lseg = calcular_longitud_de_segmento(r0, r1)
+    #         loco += lseg
+    #     return loco
 
     def calcular_volumen_de_una_fibra(self, f):
         """ calcula el volumen ocupado por una fibra """
-        loco = self.calcular_loco_de_una_fibra(f)
+        # loco = self.calcular_loco_de_una_fibra(f)
+        loco = self.fibs.loco[f]
         D = self.fibs.D[f]
         return loco * PI * D * D / 4.
 
@@ -314,10 +315,15 @@ class Mallacom(object):
         """
 
         # obtengo los indices de segmento y nodos
+
+        # segmentos de la fibra
         fib_con = self.fibs.con[fib]
-        seg = fib_con[-1] # ultimo segmento de la fibra
-        _, n1 = seg_con = self.segs.con[seg] # nodos de seg
-        r0, r1 = self.nods.r[seg_con]  # coordenadas xy de los nodos del segmento s
+        # ultimo segmento de la fibra
+        seg = fib_con[-1] 
+        # nodos de seg
+        n0, n1 = seg_con = self.segs.con[seg] 
+        # coordenadas xy de los nodos del segmento s
+        r0, r1 = self.nods.r[n0], self.nods.r[n1]  
         # pruebo con cada borde
         for b in range(4):  # recorro los 4 bordes
             # puntos del borde en cuestion
@@ -328,8 +334,10 @@ class Mallacom(object):
             else:  # hubo interseccion
                 in_r, in_tipo, *_ = interseccion
                 if in_tipo == 2:  # interseccion en el medio
-                    try:  # tengo que mover el ultimo nodo y por lo tanto cambia el segmento
-                        self.mover_ultimo_nodo(n1, in_r, 0)
+                    try:  
+                        # tengo que mover el ultimo nodo
+                        # y por lo tanto cambia el segmento y la fibra
+                        self.mover_ultimo_nodo(n1, in_r)
                     except ValueError as err:
                         # TODO: limpiar esto por el amor de la virgen y todos los santos
                         print("Error en trim_fibra_at_frontera")
@@ -344,23 +352,33 @@ class Mallacom(object):
                     # TODO: programar este caso, no es complicado
                     pass
 
-    def mover_ultimo_nodo(self, n, new_r, trimlen=0):
+    def mover_ultimo_nodo(self, n, new_r):
         """
         Se mueve el ultimo nodo de una fibra, 
         con la ventaja de saber que corresponde a un solo segmento
         y a una sola fibra
         """
 
+        # obtengo el segmento conectado al nodo 
+        seg = self.segs.conT[n][0] # deberia ser uno solo
+        # obtengo la fibra conectada al segmento (y por ende al nodo) 
+        fib = self.fibs.conT[seg][0]
+
+        # calculo la longitud vieja del segmento (la voy a necesitar)
+        n0, n1 = self.segs.con[seg]
+        r0, r1 = self.nods.r[n0], self.nods.r[n1]
+        old_len = calcular_longitud_de_segmento(r0, r1)
+
         # cambio las coordenadas del nodo
         self.nods.r[n] = new_r 
         
-        # obtengo el segmento conectado al nodo 
-        seg = self.segs.conT[n] 
+        # actualizo longitud y theta de seg     
         self.segs.actualizar_segmento(seg, self.nods.r)
+        new_len = self.segs.longs[seg]
 
-        # obtengo la fibra conectada al segmento (y por ende al nodo) 
-        fib = self.fibs.conT[seg]
-        self.fibs.loco[fib] -= trimlen
+        # actualizo loco de fib
+        trim_len = old_len - new_len
+        self.fibs.loco[fib] -= trim_len
 
 
     def mover_nodo(self, n, new_r):

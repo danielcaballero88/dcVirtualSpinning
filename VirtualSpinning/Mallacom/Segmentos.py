@@ -61,8 +61,11 @@ class Segmentos(object):
             new: boolean, True si es un segmento nuevo
         """
         n0, n1 = self.con[j]
-        dr = coors[n1] - coors[n0]
-        long = np.sqrt(np.sum(dr*dr))
+        r0, r1 = coors[n0], coors[n1]
+        x0, y0 = r0 
+        x1, y1 = r1
+        dx, dy = x1 - x0, y1 - y0
+        long = np.sqrt(dx * dx + dy * dy)
         if new:
             self.longs.append(long)
         else: 
@@ -80,7 +83,7 @@ class Segmentos(object):
             new: boolean, True si es un segmento nuevo
         """
         n0, n1 = self.con[j] 
-        r0, r1 = coors[[n0, n1]]
+        r0, r1 = coors[n0], coors[n1]
         theta = calcular_angulo_de_segmento(r0, r1)
         if new:
             self.thetas.append(theta)
