@@ -1,7 +1,8 @@
 # Global imports
 import numpy as np
 from matplotlib import pyplot as plt
-import matplotlib.colors as colors
+from matplotlib import colors
+from matplotlib import cm
 # Local imports
 from .Fibras import Fibras
 from .Nodos import Nodos
@@ -31,6 +32,8 @@ class Mallasim(object):
         self.Fmacro = None
         self.Tmacro = None
         self.Ncapas = None
+        self.nparcon = 0 
+        self.parcon = []
 
     @classmethod
     def leer_desde_archivo(cls, nomarchivo):
@@ -41,14 +44,12 @@ class Mallasim(object):
         L = float(next(fid))
         Dm = float(next(fid))
         Nc = int(next(fid))
-        nparam = int(next(fid))
-        svals = next(fid).split()
-        param_in = [float(val) for val in svals]
         # me fijo su es una malla deformada
         target = "*deformacion"
         ierr = find_string_in_file(fid, target, mandatory=False)
         status_deformed = False
         if ierr == 0:
+            # si la malla esta deformada leo su Fmacro y Tmacro
             status_deformed = True
             linea = next(fid)
             F11, F21, F12, F22 = [float(item) for item in linea.split()]
@@ -56,11 +57,18 @@ class Mallasim(object):
             linea = next(fid)
             T11, T21, T12, T22 = [float(item) for item in linea.split()]
             Tmacro = np.array([[T11, T12], [T21, T22]])
+            # tambien sus parametros constitutivos
+            nparcon = int(next(fid))
+            svals = next(fid).split()
+            parcon = [float(val) for val in svals]
         else:
+            # si no esta deformada pongo valores default
             status_deformed = False
             F11, F21, F12, F22 = 1.0, 0.0, 0.0, 1.0
             Fmacro = np.array([[F11, F12], [F21, F22]])
             Tmacro = np.array([[0.0, 0.0], [0.0, 0.0]])
+            nparcon = 0 
+            parcon = []
         # luego busco coordenadas
         target = "*coordenadas"
         ierr = find_string_in_file(fid, target, True)
@@ -126,8 +134,8 @@ class Mallasim(object):
         letes0 = np.array(letes0, dtype=float)
         lamsr = np.array(lamsr, dtype=float)
         locos = letes0 * lamsr
-        param = np.zeros((num_f, nparam), dtype=float)
-        param[:, 0:] = param_in
+        param = np.zeros((num_f, nparcon), dtype=float)
+        param[:, 0:] = parcon
         fibras = Fibras(num_f, fibs, ds, letes0, lamsr, lamps, brokens, param)
         # mallita
         m = cls(L, Dm, nodos, fibras)
@@ -189,7 +197,7 @@ class Mallasim(object):
         ax.plot(r_corners[:, 0], r_corners[:, 1], linestyle=":", c="gray")
 
     def pre_graficar_0(self, fig, ax, lamr_min=None, lamr_max=None, plotnodos=False, maxnfibs=500, colorbar=False):
-        mi_cm = plt.cm.jet
+        mi_cm = cm.get_cmap('jet')
         lamsr = self.fibras.lamsr
         if lamr_min is None:
             lamr_min = np.min(lamsr)
@@ -238,30 +246,36 @@ class Mallasim(object):
                      maxnfibs=5000, byn=False, color_por="nada", barracolor=False, colormap="jet", colores_cm=None,
                      ncolores_cm=100,
                      afin=True, colorafin="gray", linewidthafin=2):
-        print("pregraficando mallita")
-        drs, longs, lams = self.fibras.calcular_drs_letes_lams(self.nodos.r)
+        """
+        Metodo para graficar el rve de una Mallasim
+        """
+
+        print("Pregraficando Mallasim")
+
+        # Calculo variables de las fibras
+        lams = self.fibras.calcular_lams(self.nodos.r)
         lamsr = self.fibras.lamsr
         lamps = self.fibras.lamps
         lams_ef = lams[:, 0] / lamsr / lamps
+
+        # Me fijo si es una malla deformada
         if self.status_deformed:
             Fmacro = self.Fmacro
         else:
             Fmacro = np.array([[1., 0.], [0., 1.]])
+
+        # Selecciono el mapa de colores
         if byn:
-            mi_cm = plt.cm.gray_r
+            mi_cm = cm.get_cmap('gray_r')
             # lo trunco para que no incluya el cero (blanco puro que no hace contraste con el fondo)
             mi_cm = self.truncate_colormap(mi_cm, 0.4, 1.0)
-        else:
-            if colores_cm is not None:
-                mi_cm = colors.LinearSegmentedColormap.from_list("mi_cm", colores_cm, N=ncolores_cm)
-            elif colormap == "jet":
-                mi_cm = plt.cm.jet
-            elif colormap == "rainbow":
-                mi_cm = plt.cm.rainbow
-            elif colormap == "prism":
-                mi_cm = plt.cm.prism
-            elif colormap == "Dark2":
-                mi_cm = plt.cm.Dark2
+        elif colores_cm is not None:
+            mi_cm = colors.LinearSegmentedColormap.from_list("mi_cm", colores_cm, N=ncolores_cm)
+        else: 
+            mi_cm = cm.get_cmap(colormap)
+
+        # Me fijo segun cual variable voy a colorear
+        # TODO: simplificar este codigo
         if color_por == "lamr":
             if lam_min is None:
                 lam_min = np.min(lamsr)
@@ -295,35 +309,45 @@ class Mallasim(object):
         elif color_por == "nada":
             sm = plt.cm.ScalarMappable(cmap=mi_cm, norm=plt.Normalize(vmin=0, vmax=self.fibras.n - 1))  # al pedo
 
+        # Decido si ademas de la malla deformada grafico la deformacion afin para comparar
         if afin is False or Fmacro is None:
             # si se da Fmacro r0 se modifica para que sean las coordenadas de deformacion afin
             # de lo contrario quedan las iniciales
             r0 = self.nodos.r0
         else:
             r0 = np.matmul(self.nodos.r0, np.transpose(Fmacro))
+
+        # Me fijo cuantas fibras voy a graficar
         nfibs = self.fibras.n
-        if maxnfibs < nfibs:
-            nfibs = maxnfibs
+        if maxnfibs < nfibs: nfibs = maxnfibs
+
+        # Armo algunas variables para medir porcentaje de avance
         pctp = np.arange(0., 101., 10.).tolist()
         pcpd = np.zeros(len(pctp), dtype=bool).tolist()
+
+        # Empiezo el bucle para graficar
         for f in range(nfibs):
-            # imprimo el porcentaje de completado
+            # Imprimo el porcentaje de completado
             pc = round(float(f) / nfibs * 100., 0)
             if pc in pctp:
                 ipc = pctp.index(pc)
                 if not pcpd[ipc]:
                     print("{:4.0f}% ".format(pc), end='')
                     pcpd[ipc] = True
-            # ---
+            
+            # Grafico la fibra f
             n0, n1 = self.fibras.con[f]
+
+            # Grafico configuracion afin o inicial si asi lo quise (para comparar)
             if afin and Fmacro is not None:
-                # linea inicial (afin si se da Fmacro)
                 x0, y0 = r0[n0]
                 x1, y1 = r0[n1]
                 ax.plot([x0, x1], [y0, y1], ls=":", c=colorafin, linewidth=linewidthafin)
-            # linea final
+            
+            # Grafico configuracion deformada
             x0, y0 = self.nodos.r[n0]
             x1, y1 = self.nodos.r[n1]
+            # TODO: simplificar esto junto con lo anterior
             if color_por == "lamr":
                 c = sm.to_rgba(lamsr[f])
             elif color_por == "lam":
@@ -341,14 +365,22 @@ class Mallasim(object):
                     c = "blue"
             elif color_por == "nada":
                 c = "k"
+
             # --
+            # Si la fibra se ha roto o aun esta sin reclutar le pongo otro color
             # if self.fibras.brokens[f]:
             #     c = "gray"
             # elif lams_ef[f] < 1.00001:
             #     c = "k"
             # --
+            
+            # La agrego al plot
             ax.plot([x0, x1], [y0, y1], ls="-", linewidth=linewidth, c=c)
         print()
+
+        # Agrego la colorbar si asi lo quise
         if barracolor:
             sm._A = []
             fig.colorbar(sm)
+
+        # Fin

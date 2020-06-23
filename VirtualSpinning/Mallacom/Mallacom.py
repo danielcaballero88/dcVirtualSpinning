@@ -696,9 +696,12 @@ class Mallacom(object):
         dString = "*Fibras \n" + str(len(self.fibs.con)) + "\n"
         fid.write(dString)
         for f, fcon in enumerate(self.fibs.con):
+            dl = self.fibs.dl[f]
+            D = self.fibs.D[f] 
+            dth = self.fibs.dth[f] 
+            loco = self.fibs.loco[f]
             dString = "{:12d}".format(f)  # indice
-            dString += "{:17.8e}{:17.8e}{:17.8e}".format(self.fibs.dl[f], self.fibs.D[f],
-                                                         self.fibs.dth[f])  # ls, d y dtheta
+            dString += ('{:17.8e}'*4).format(dl, D, dth, loco)
             dString += "{:12d}".format(len(fcon))  # numero de segmentos en la fibra
             dString += "".join("{:12d}".format(val) for val in fcon) + "\n"  # conectividad
             fid.write(dString)
@@ -754,18 +757,20 @@ class Mallacom(object):
         lss = []
         ds = []
         dthetas = []
+        locos = []
         for i in range(num_f):
             svals = next(fid).split()
             _j = int(svals[0])
             ls = float(svals[1])
             d = float(svals[2])
             dtheta = float(svals[3])
-            # _nsegsf = int(svals[4])  # unused
-            fcon = [int(val) for val in svals[5:]]
+            loco = float(svals[4])
+            fcon = [int(val) for val in svals[6:]]
             fibs.append(fcon)
             lss.append(ls)
             ds.append(d)
             dthetas.append(dtheta)
+            locos.append(loco)
         # luego la capas
         target = "*capas"
         _ierr = find_string_in_file(fid, target, True)
@@ -804,7 +809,8 @@ class Mallacom(object):
             ls = lss[i]
             d = ds[i]
             dtheta = dthetas[i]
-            malla.fibs.add_fibra(f_con, ls, d, dtheta)
+            loco = locos[i]
+            malla.fibs.add_fibra(f_con, ls, d, dtheta, loco)
         # le asigno las capas
         for c in range(num_c):
             c_con = caps[c]

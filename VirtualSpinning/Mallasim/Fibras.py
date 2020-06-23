@@ -31,6 +31,10 @@ class Fibras(object):
         lams = longs / self.letes0[:, None]
         return drs, longs, lams
 
+    def calcular_lams(self, r):
+        *_, lams = self.calcular_drs_letes_lams(r) 
+        return lams
+
     def calcular_fuerzas(self, r, longout=False):
         drs, longs, lams = self.calcular_drs_letes_lams(r)
         lams_r = self.lamsr
