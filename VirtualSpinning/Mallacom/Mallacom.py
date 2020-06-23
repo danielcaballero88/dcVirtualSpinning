@@ -316,7 +316,7 @@ class Mallacom(object):
         # obtengo los indices de segmento y nodos
         fib_con = self.fibs.con[fib]
         seg = fib_con[-1] # ultimo segmento de la fibra
-        n0, n1 = seg_con = self.segs.con[seg] # nodos de seg
+        _, n1 = seg_con = self.segs.con[seg] # nodos de seg
         r0, r1 = self.nods.r[seg_con]  # coordenadas xy de los nodos del segmento s
         # pruebo con cada borde
         for b in range(4):  # recorro los 4 bordes
