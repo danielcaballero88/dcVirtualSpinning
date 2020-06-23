@@ -61,11 +61,11 @@ def main():
         mc = Mallacom(**d_params, name=f'malla_{im+1:02d}')
         archivo = DIR / 'temp' / f'{mc.name}.txt'
         mc.guardar_en_archivo(archivo)
-        fig = plt.figure(figsize=(8, 8))
+        fig = plt.figure(figsize=(8, 6))
         ax = fig.add_subplot(111)
         mc.marco.graficar(fig, ax)
         mc.pre_graficar_fibras(fig, ax, color_por="capa", byn=True, linewidth=1.5)
-
+        fig.savefig(DIR / 'temp' / f'{mc.name}.png')
 
     print('time: ', time.time() - start)
     plt.show()

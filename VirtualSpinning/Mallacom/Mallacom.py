@@ -38,7 +38,161 @@ class Mallacom(object):
         self.segs = Segmentos()  # lista vacia
         self.nods = Nodos()  # tiene dos listas vacias
         self.marco = Marco(L)
-        self.make_malla()
+
+    @classmethod
+    def leer_de_archivo(cls, archivo="Malla.txt"):
+        fid = open(archivo, "r")
+        # primero leo los parametros
+        target = "*parametros"
+        _ierr = find_string_in_file(fid, target, True)
+        L = float(next(fid))
+        Dm = float(next(fid))
+        volfrac = float(next(fid))
+        if volfrac > 1.:
+            volfrac = int(volfrac + .5)
+        ls = float(next(fid))
+        devangmax = float(next(fid))  # en grados
+        devangmax = devangmax * PI / 180.
+        # luego busco coordenadas
+        target = "*coordenadas"
+        _ierr = find_string_in_file(fid, target, True)
+        num_r = int(next(fid))
+        coors = []
+        tipos = []
+        for i in range(num_r):
+            _j, t, x, y = (float(val) for val in next(fid).split())
+            tipos.append(int(t))
+            coors.append([x, y])
+        # luego los segmentos
+        target = "*segmentos"
+        _ierr = find_string_in_file(fid, target, True)
+        num_s = int(next(fid))
+        segs = []
+        for i in range(num_s):
+            _j, n0, n1 = (int(val) for val in next(fid).split())
+            segs.append([n0, n1])
+        # luego las fibras
+        target = "*fibras"
+        _ierr = find_string_in_file(fid, target, True)
+        num_f = int(next(fid))
+        fibs = []
+        lss = []
+        ds = []
+        dthetas = []
+        locos = []
+        for i in range(num_f):
+            svals = next(fid).split()
+            _j = int(svals[0])
+            ls = float(svals[1])
+            d = float(svals[2])
+            dtheta = float(svals[3])
+            loco = float(svals[4])
+            fcon = [int(val) for val in svals[6:]]
+            fibs.append(fcon)
+            lss.append(ls)
+            ds.append(d)
+            dthetas.append(dtheta)
+            locos.append(loco)
+        # luego la capas
+        target = "*capas"
+        _ierr = find_string_in_file(fid, target, True)
+        num_c = int(next(fid))
+        caps = []
+        for c in range(num_c):
+            svals = next(fid).split()
+            _j = int(svals[0])
+            # _nfibsc = int(svals[1])  # unused
+            ccon = [int(val) for val in svals[2:]]
+            caps.append(ccon)
+        # ahora que tengo todo armo el objeto
+        params = {
+            'L': L,
+            'D': Dm, 
+            'vf': volfrac, 
+            'ls': ls,
+            'dth': devangmax,
+            'nc': num_c
+        }
+        malla = cls(**params)
+        # le asigno los nodos
+        for i in range(num_r):
+            malla.nods.add_nodo(coors[i], tipos[i])
+        # le asigno los segmentos
+        for i in range(num_s):
+            s_con = segs[i]
+            try:
+                malla.segs.add_segmento(s_con, coors)
+            except ValueError:
+                print("Segmento de long nula")
+                # raise ValueError("Error, segmento de longitud nula!!")
+        # le asigno las fibras
+        for i in range(num_f):
+            f_con = fibs[i]
+            ls = lss[i]
+            d = ds[i]
+            dtheta = dthetas[i]
+            loco = locos[i]
+            malla.fibs.add_fibra(f_con, ls, d, dtheta, loco)
+        # le asigno las capas
+        for c in range(num_c):
+            c_con = caps[c]
+            malla.caps.add_capa(c_con)
+        # listo
+        return malla
+
+    def guardar_en_archivo(self, archivo="Malla.txt"):
+        fid = open(archivo, "w")
+        # ---
+        # primero escribo L, ls y dtheta
+        fid.write("*Parametros (L, Dm, volfrac, ls, devangmax) \n")
+        fid.write("{:20.8f}\n".format(self.params['L']))
+        fid.write("{:20.8f}\n".format(self.params['D']))
+        fid.write("{:20.8f}\n".format(self.params['vf']))
+        fid.write("{:20.8f}\n".format(self.params['ls']))
+        fid.write("{:20.8f}\n".format(self.params['dth'] * 180. / PI))  # lo escribo en grados
+        # ---
+        # escribo los nodos: indice, tipo, y coordenadas
+        dString = "*Coordenadas \n" + str(len(self.nods.r)) + "\n"
+        fid.write(dString)
+        for n in range(len(self.nods.r)):
+            dString = "{:12d}".format(n)
+            dString += "{:2d}".format(self.nods.tipos[n])
+            dString += "".join("{:+17.8e}".format(val) for val in self.nods.r[n]) + "\n"
+            fid.write(dString)
+        # ---
+        # sigo con los segmentos: indice, nodo inicial y nodo final
+        dString = "*Segmentos \n" + str(len(self.segs.con)) + "\n"
+        fid.write(dString)
+        for s in range(len(self.segs.con)):
+            n0, n1 = self.segs.con[s]  # conectividad del segmento (nodo inicial n0 y nodo final n1)
+            fmt = "{:12d}" * 3
+            dString = fmt.format(s, n0, n1) + "\n"
+            fid.write(dString)
+        # ---
+        # sigo con las fibras: indice, ls, d, dtheta, nsegs_f, y segmentos (conectividad)
+        dString = "*Fibras \n" + str(len(self.fibs.con)) + "\n"
+        fid.write(dString)
+        for f, fcon in enumerate(self.fibs.con):
+            dl = self.fibs.dl[f]
+            D = self.fibs.D[f] 
+            dth = self.fibs.dth[f] 
+            loco = self.fibs.loco[f]
+            dString = "{:12d}".format(f)  # indice
+            dString += ('{:17.8e}'*4).format(dl, D, dth, loco)
+            dString += "{:12d}".format(len(fcon))  # numero de segmentos en la fibra
+            dString += "".join("{:12d}".format(val) for val in fcon) + "\n"  # conectividad
+            fid.write(dString)
+        # termino con las capas: indice y fibras (conectividad):
+        dString = "*Capas \n" + str(len(self.caps.con)) + "\n"
+        fid.write(dString)
+        for c, ccon in enumerate(self.caps.con):
+            dString = "{:12d}".format(c)  # indice
+            dString += "{:12d}".format(len(ccon))  # numero de fibras en la capa
+            dString += "".join("{:12d}".format(val) for val in ccon) + "\n"  # conectividad
+            fid.write(dString)
+        # ---
+        # termine
+        fid.close()
 
     def make_malla(self):
         """
@@ -146,7 +300,8 @@ class Mallacom(object):
         n = 1
         while True:
             # si el nodo anterior ha caido fuera del rve ya esta la fibra
-            if self.check_fuera_del_RVE(coors[-1]):
+            # if self.check_fuera_del_RVE(coors[-1]):
+            if self.marco.check_punto_fuera(coors[-1]):
                 break
             n += 1
             # de lo contrario armo un nuevo segmento a partir del ultimo nodo
@@ -189,17 +344,6 @@ class Mallacom(object):
 
         # fin
         return len(self.fibs.con) - 1  # devuelvo el indice de la fibra
-
-    # def calcular_loco_de_una_fibra(self, f):
-    #     """ calcula la longitud de contorno de una fibra """
-    #     loco = 0.
-    #     for seg in self.fibs.con[f]:
-    #         n0, n1 = self.segs.con[seg]
-    #         r0 = self.nods.r[n0]
-    #         r1 = self.nods.r[n1]
-    #         lseg = calcular_longitud_de_segmento(r0, r1)
-    #         loco += lseg
-    #     return loco
 
     def calcular_volumen_de_una_fibra(self, f):
         """ calcula el volumen ocupado por una fibra """
@@ -299,15 +443,6 @@ class Mallacom(object):
             else:  # b0 in (2,3)
                 theta = th_0pi + PI
         return theta
-
-    def check_fuera_del_RVE(self, r):
-        x = r[0]
-        y = r[1]
-        L = self.params['L']
-        if x <= 0 or x >= L or y <= 0 or y >= L:
-            return True
-        else:
-            return False
 
     def trim_fibra_at_frontera(self, fib):
         """ 
@@ -663,161 +798,6 @@ class Mallacom(object):
         x = x_edges[:-1] + 0.5 * delta
         return x, delta, pdf
 
-    def guardar_en_archivo(self, archivo="Malla.txt"):
-        fid = open(archivo, "w")
-        # ---
-        # primero escribo L, ls y dtheta
-        fid.write("*Parametros (L, Dm, volfrac, ls, devangmax) \n")
-        fid.write("{:20.8f}\n".format(self.params['L']))
-        fid.write("{:20.8f}\n".format(self.params['D']))
-        fid.write("{:20.8f}\n".format(self.params['vf']))
-        fid.write("{:20.8f}\n".format(self.params['ls']))
-        fid.write("{:20.8f}\n".format(self.params['dth'] * 180. / PI))  # lo escribo en grados
-        # ---
-        # escribo los nodos: indice, tipo, y coordenadas
-        dString = "*Coordenadas \n" + str(len(self.nods.r)) + "\n"
-        fid.write(dString)
-        for n in range(len(self.nods.r)):
-            dString = "{:12d}".format(n)
-            dString += "{:2d}".format(self.nods.tipos[n])
-            dString += "".join("{:+17.8e}".format(val) for val in self.nods.r[n]) + "\n"
-            fid.write(dString)
-        # ---
-        # sigo con los segmentos: indice, nodo inicial y nodo final
-        dString = "*Segmentos \n" + str(len(self.segs.con)) + "\n"
-        fid.write(dString)
-        for s in range(len(self.segs.con)):
-            n0, n1 = self.segs.con[s]  # conectividad del segmento (nodo inicial n0 y nodo final n1)
-            fmt = "{:12d}" * 3
-            dString = fmt.format(s, n0, n1) + "\n"
-            fid.write(dString)
-        # ---
-        # sigo con las fibras: indice, ls, d, dtheta, nsegs_f, y segmentos (conectividad)
-        dString = "*Fibras \n" + str(len(self.fibs.con)) + "\n"
-        fid.write(dString)
-        for f, fcon in enumerate(self.fibs.con):
-            dl = self.fibs.dl[f]
-            D = self.fibs.D[f] 
-            dth = self.fibs.dth[f] 
-            loco = self.fibs.loco[f]
-            dString = "{:12d}".format(f)  # indice
-            dString += ('{:17.8e}'*4).format(dl, D, dth, loco)
-            dString += "{:12d}".format(len(fcon))  # numero de segmentos en la fibra
-            dString += "".join("{:12d}".format(val) for val in fcon) + "\n"  # conectividad
-            fid.write(dString)
-        # termino con las capas: indice y fibras (conectividad):
-        dString = "*Capas \n" + str(len(self.caps.con)) + "\n"
-        fid.write(dString)
-        for c, ccon in enumerate(self.caps.con):
-            dString = "{:12d}".format(c)  # indice
-            dString += "{:12d}".format(len(ccon))  # numero de fibras en la capa
-            dString += "".join("{:12d}".format(val) for val in ccon) + "\n"  # conectividad
-            fid.write(dString)
-        # ---
-        # termine
-        fid.close()
-
-    @classmethod
-    def leer_de_archivo(cls, archivo="Malla.txt"):
-        fid = open(archivo, "r")
-        # primero leo los parametros
-        target = "*parametros"
-        _ierr = find_string_in_file(fid, target, True)
-        L = float(next(fid))
-        Dm = float(next(fid))
-        volfrac = float(next(fid))
-        if volfrac > 1.:
-            volfrac = int(volfrac + .5)
-        ls = float(next(fid))
-        devangmax = float(next(fid))  # en grados
-        devangmax = devangmax * PI / 180.
-        # luego busco coordenadas
-        target = "*coordenadas"
-        _ierr = find_string_in_file(fid, target, True)
-        num_r = int(next(fid))
-        coors = []
-        tipos = []
-        for i in range(num_r):
-            _j, t, x, y = (float(val) for val in next(fid).split())
-            tipos.append(int(t))
-            coors.append([x, y])
-        # luego los segmentos
-        target = "*segmentos"
-        _ierr = find_string_in_file(fid, target, True)
-        num_s = int(next(fid))
-        segs = []
-        for i in range(num_s):
-            _j, n0, n1 = (int(val) for val in next(fid).split())
-            segs.append([n0, n1])
-        # luego las fibras
-        target = "*fibras"
-        _ierr = find_string_in_file(fid, target, True)
-        num_f = int(next(fid))
-        fibs = []
-        lss = []
-        ds = []
-        dthetas = []
-        locos = []
-        for i in range(num_f):
-            svals = next(fid).split()
-            _j = int(svals[0])
-            ls = float(svals[1])
-            d = float(svals[2])
-            dtheta = float(svals[3])
-            loco = float(svals[4])
-            fcon = [int(val) for val in svals[6:]]
-            fibs.append(fcon)
-            lss.append(ls)
-            ds.append(d)
-            dthetas.append(dtheta)
-            locos.append(loco)
-        # luego la capas
-        target = "*capas"
-        _ierr = find_string_in_file(fid, target, True)
-        num_c = int(next(fid))
-        caps = []
-        for c in range(num_c):
-            svals = next(fid).split()
-            _j = int(svals[0])
-            # _nfibsc = int(svals[1])  # unused
-            ccon = [int(val) for val in svals[2:]]
-            caps.append(ccon)
-        # ahora que tengo todo armo el objeto
-        params = {
-            'L': L,
-            'D': Dm, 
-            'vf': volfrac, 
-            'ls': ls,
-            'dth': devangmax,
-            'nc': num_c
-        }
-        malla = cls(**params)
-        # le asigno los nodos
-        for i in range(num_r):
-            malla.nods.add_nodo(coors[i], tipos[i])
-        # le asigno los segmentos
-        for i in range(num_s):
-            s_con = segs[i]
-            try:
-                malla.segs.add_segmento(s_con, coors)
-            except ValueError:
-                print("Segmento de long nula")
-                # raise ValueError("Error, segmento de longitud nula!!")
-        # le asigno las fibras
-        for i in range(num_f):
-            f_con = fibs[i]
-            ls = lss[i]
-            d = ds[i]
-            dtheta = dthetas[i]
-            loco = locos[i]
-            malla.fibs.add_fibra(f_con, ls, d, dtheta, loco)
-        # le asigno las capas
-        for c in range(num_c):
-            c_con = caps[c]
-            malla.caps.add_capa(c_con)
-        # listo
-        return malla
-
     def pre_graficar_capas(self, fig, ax, byn=True):
         nc = len(self.caps.con)
         if byn:
@@ -967,6 +947,8 @@ class Mallacom(object):
             sm = plt.cm.ScalarMappable(cmap=mi_colormap, norm=plt.Normalize(vmin=lamr_min, vmax=lamr_max))
         elif color_por == "interfibra":
             sm = plt.cm.ScalarMappable(cmap=mi_colormap, norm=plt.Normalize(vmin=0, vmax=len(infbs_con) - 1))
+        elif color_por == 'random': 
+            sm = plt.cm.ScalarMappable(cmap=mi_colormap, norm=plt.Normalize(vmin=0, vmax=1))
         elif color_por == "nada":
             sm = plt.cm.ScalarMappable(cmap=mi_colormap, norm=plt.Normalize(vmin=0, vmax=len(infbs_con) - 1))
         # dibujo las fibras (los segmentos)
@@ -1004,6 +986,8 @@ class Mallacom(object):
                 col = sm.to_rgba(lamsr[i])
             elif color_por == "interfibra":
                 col = sm.to_rgba(i)
+            elif color_por == 'random': 
+                col = sm.to_rgba(np.random.rand())
             elif color_por == "nada":
                 col = "k"
             grafs.append(ax.plot(xx[i], yy[i], linestyle="-", marker="", label=str(i), color=col))

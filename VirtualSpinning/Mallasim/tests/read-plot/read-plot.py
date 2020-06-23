@@ -14,7 +14,7 @@ def main():
     print('CWD: ', CWD)
     print('DIR: ', DIR)
     print('__file__: ', FILE)
-    mc = Mallacom.leer_de_archivo(DIR / 'temp' / 'malla.txt')
+    mc = Mallacom.leer_de_archivo(DIR / 'temp' / 'malla_i.txt')
     ms = Mallasim.leer_desde_archivo(DIR / 'temp' / 'malla_i_s.txt')
     fig, ax = plt.subplots()
     mc.pre_graficar_fibras(fig, ax)

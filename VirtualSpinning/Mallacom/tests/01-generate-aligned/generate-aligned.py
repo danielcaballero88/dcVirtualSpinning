@@ -34,14 +34,15 @@ def main():
         'fdo': fdo,
         'nm': 1
     }
-    mc = Mallacom(**params, name='malla_generate-aligned')
+    mc = Mallacom(**params, name='malla')
     archivo = DIR / 'temp' / f'{mc.name}.txt'
     mc.guardar_en_archivo(archivo)
-    fig = plt.figure(figsize=(8, 8))
+    fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111)
     mc.marco.graficar(fig, ax)
     mc.pre_graficar_fibras(fig, ax, color_por="capa", byn=True, linewidth=1.5)
     print('time: ', time.time() - start)
+    fig.savefig(DIR / 'temp' / 'malla.png')
     plt.show()
 
 

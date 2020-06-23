@@ -76,25 +76,8 @@ class Mallasim(object):
         coors0 = list()
         coors = list()
         tipos = list()
-        # -
-        L_2 = 0.5 * L
-        if status_deformed:
-            L_2_def_x = 0.5 * L * F11
-            L_2_def_y = 0.5 * L * F22
-        else:
-            L_2_def_x = L_2
-            L_2_def_y = L_2
-        # -
-        for i in range(num_r):
-            j, t, x0, y0, x, y = (float(val) for val in next(fid).split())
-            x0 = x0 - L_2
-            y0 = y0 - L_2
-            if status_deformed:
-                x = x - L_2_def_x
-                y = y - L_2_def_y
-            else:
-                x = x0
-                y = y0
+        for _i in range(num_r):
+            _j, t, x0, y0, x, y = (float(val) for val in next(fid).split())
             tipos.append(int(t))
             coors0.append([x0, y0])
             coors.append([x, y])
@@ -108,9 +91,9 @@ class Mallasim(object):
         lamsr = list()
         lamps = list()
         brokens = list()
-        for i in range(num_f):
+        for _i in range(num_f):
             svals = next(fid).split()
-            j = int(svals[0])
+            _j = int(svals[0])
             d = float(svals[1])
             lete0 = float(svals[2])
             lamr0 = float(svals[3])
@@ -133,7 +116,7 @@ class Mallasim(object):
         # subfibras
         letes0 = np.array(letes0, dtype=float)
         lamsr = np.array(lamsr, dtype=float)
-        locos = letes0 * lamsr
+        _locos = letes0 * lamsr
         param = np.zeros((num_f, nparcon), dtype=float)
         param[:, 0:] = parcon
         fibras = Fibras(num_f, fibs, ds, letes0, lamsr, lamps, brokens, param)
