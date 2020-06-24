@@ -1,3 +1,10 @@
+"""
+En este test leo de archivos y grafico dos Mallacom
+Una en estado original (sin intersecciones) y una intersectada por
+el procesador de Fortran, y comparo para ver que este en orden
+"""
+
+
 from matplotlib import pyplot as plt
 from pathlib import Path
 from VirtualSpinning.Mallacom.Mallacom import Mallacom

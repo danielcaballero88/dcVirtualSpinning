@@ -20,7 +20,7 @@ class Fibras(object):
     def add_fibra(self, fib_con, dl, d, dtheta, loco):
         self.num += 1
         self.con.append(fib_con)
-        append_to_keys(self.conT, fib_con, self.num-1)
+        append_to_keys(self.conT, fib_con, self.num - 1)
         self.dl.append(dl)
         self.D.append(d)
         self.dth.append(dtheta)
