@@ -14,15 +14,25 @@ def main():
     print('CWD: ', CWD)
     print('DIR: ', DIR)
     print('__file__: ', FILE)
-    mc = Mallacom.leer_de_archivo(DIR / 'temp' / 'malla_i.txt')
+
+    mc = Mallacom.leer_de_archivo(DIR / 'temp' / 'malla.txt')
+    mc_i = Mallacom.leer_de_archivo(DIR / 'temp' / 'malla_i.txt')
     ms = Mallasim.leer_desde_archivo(DIR / 'temp' / 'malla_i_s.txt')
+
     fig, ax = plt.subplots()
-    mc.pre_graficar_fibras(fig, ax)
+    mc.marco.graficar(fig, ax)
+    mc.pre_graficar_fibras(fig, ax, cbar=False)
+
+    fig, ax = plt.subplots()
+    mc_i.marco.graficar(fig, ax)
+    mc_i.pre_graficar_fibras(fig, ax, cbar=False)
+
+    fig, ax = plt.subplots()
     ms.pre_graficar_bordes(fig, ax)
     colores_cm = ['blue', 'red']
     ms.pre_graficar(fig, ax, color_por="lamr", linewidth=1.5,
                     # lam_min=0.0, lam_max=100.,
-                    barracolor=True, colormap="rainbow", colores_cm=colores_cm, maxnfibs=3000,
+                    barracolor=False, colormap="rainbow", colores_cm=colores_cm, maxnfibs=3000,
                     afin=False, colorafin="k", linewidthafin=1.5)
     plt.show()
 
