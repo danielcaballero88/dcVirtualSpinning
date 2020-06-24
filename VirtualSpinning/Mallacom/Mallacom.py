@@ -20,6 +20,18 @@ MESH_PARAMS = ('L', 'D', 'vf', 'ls', 'dth', 'nc', 'fdo')
 PI = np.pi
 
 
+SMALL_SIZE = 12
+MEDIUM_SIZE = 20
+BIGGER_SIZE = 24
+plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=BIGGER_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+
 class Mallacom(object):
     def __init__(self, L, D, vf, ls, dth, nc, fdo=None, nm=1, name='malla'):
         self.name = name
@@ -475,7 +487,7 @@ class Mallacom(object):
                     try:  
                         # tengo que mover el ultimo nodo
                         # y por lo tanto cambia el segmento y la fibra
-                        self.mover_ultimo_nodo(n1, in_r)
+                        self.__mover_ultimo_nodo(n1, in_r)
                     except ValueError as err:
                         # TODO: limpiar esto por el amor de la virgen y todos los santos
                         print("Error en trim_fibra_at_frontera")
@@ -490,7 +502,7 @@ class Mallacom(object):
                     # TODO: programar este caso, no es complicado
                     pass
 
-    def mover_ultimo_nodo(self, n, new_r):
+    def __mover_ultimo_nodo(self, n, new_r):
         """
         Se mueve el ultimo nodo de una fibra, 
         con la ventaja de saber que corresponde a un solo segmento
@@ -519,7 +531,7 @@ class Mallacom(object):
         self.fibs.loco[fib] -= trim_len
 
 
-    def mover_nodo(self, n, new_r):
+    def __mover_nodo(self, n, new_r):
         """
         muevo un nodo (cambio su posicion), para eso tambien doy 
         a que segmentos y a que fibras (puede ser mas de 1?) pertenece
@@ -597,7 +609,7 @@ class Mallacom(object):
         # aqui ya deberia tener una conectividad terminada
         return infbs_con
 
-    def calcular_orientaciones(self):
+    def __calc_orient(self):
         """ calcular las orientaciones de las fibras de toda la malla """
         thetas_f = []
         for f in range(self.fibs.num):
@@ -605,23 +617,84 @@ class Mallacom(object):
             thetas_f.append(theta_f)
         return thetas_f
 
-    def calcular_distribucion_de_orientaciones(self, rec_orientaciones=None, n=10):
+    def __calc_distr_orient(self, ths=None, n=10):
         """ calcula la distribucion de orientaciones en la malla
         contando las frecuencias en los bins """
         # obtengo las orientaciones de todas las fibras
-        if rec_orientaciones is None:
-            phis = self.calcular_orientaciones()
+        if ths is None:
+            thsL = self.__calc_orient()
         else:
-            phis = rec_orientaciones
-        phis = np.array(phis, dtype=float)
+            thsL = ths
+        thsL = np.array(thsL, dtype=float)
         #
-        conteo, x_edges = np.histogram(phis, bins=n, range=(0., PI))
+        conteo, x_edges = np.histogram(thsL, bins=n, range=(0., PI))
         delta = (PI - 0.) / float(n)
         # pdf = conteo / float(np.sum(conteo)) / delta
         x = x_edges[:-1] + 0.5 * delta
         return x, delta, conteo
 
-    def calcular_enrulamientos(self):
+    def get_histograma_orientaciones(self, nbins=10, opcion="fibras", csv_file=False):
+        if opcion == "fibras":
+            rec_thetas = self.__calc_orient()  # todos los angulos de las fibras
+            # thetas a continuacion son los angulos medio de cada bin
+        elif opcion == "interfibras":
+            raise NotImplementedError
+        else:
+            raise ValueError
+        #
+        thetas, dth, conteo = self.__calc_distr_orient(ths=rec_thetas, n=nbins)
+        frecs = np.array(conteo, dtype=float) / float(np.sum(conteo))
+        pdf = frecs / dth
+        # si hay opcion de guardar en archivo csv el histograma, lo hago:
+        if csv_file:
+            header = ['theta', 'dth', 'count', 'frec', 'pdf']
+            columns = [thetas, [dth] * len(thetas), conteo, frecs, pdf]
+            rows = [list(row_tuple) for row_tuple in zip(*columns)]
+            with open(csv_file, 'w') as file:
+                writer = csv.writer(file)
+                writer.writerow(header)
+                writer.writerows(rows)
+        return thetas, dth, conteo, frecs, pdf
+
+    def graficar_histograma_orientaciones(self, 
+            fig, ax, x_offset=0., dx_mult=1., yvar='pdf',
+            nbins = 10,
+            **kwargs):
+        """ grafica el histograma de orientaciones con la pdf discreta
+        que se calcula a partir de las fibras de la malla """
+
+        # Default plot parameters
+        plotparams = {
+            'edgecolor':'k',
+            'color':'gray',
+            'label':None
+        }
+        # Reemplazo por los que doy
+        for key in kwargs: 
+            plotparams[key] = kwargs[key]
+
+        # Obtengo las orientaciones
+        th, _, conteo, frecs, pdf = self.get_histograma_orientaciones(nbins=nbins)
+
+        # Calculo el ancho de bin a graficar y el offset
+        dth = (th[1] - th[0]) # asumiendo uniforme (que lo es)
+        x = th + dth * x_offset
+        dx = dth * dx_mult
+
+        # Elijo variable de histograma
+        y = {
+            'conteo':conteo, 
+            'frecuencia': frecs,
+            'pdf': pdf
+        }
+        y = y[yvar]
+
+        # Grafico
+        ax.bar(x, y, width=dx, **plotparams)
+        ax.tick_params(axis='both', which='major', pad=15)
+        # - Fin -
+
+    def __calcular_enrulamientos(self):
         """ calcular para todas las fibras sus longitudes de contorno y
         sus longitudes extremo a extremos (loco y lete)
         y calcula el enrulamiento como lamr=loco/lete """
@@ -648,7 +721,8 @@ class Mallacom(object):
             lamsr.append(loco / lete)
         return lamsr
 
-    def calcular_distribucion_de_enrulamiento(self, rec_lamsr=None, lamr_min=None, lamr_max=None, n=10, binwidth=None):
+    def __calcular_distribucion_de_enrulamiento(self, 
+        rec_lamsr=None, lamr_min=None, lamr_max=None, n=10, binwidth=None):
         """ calcular la distribucion de enrulamientos (pdf)
         para eso calculo el histograma y luego normalizo con el area
         parametros de entrada
@@ -662,7 +736,7 @@ class Mallacom(object):
         pdf: valor de pdf
         """
         if rec_lamsr is None:
-            lamsr = self.calcular_enrulamientos()
+            lamsr = self.__calcular_enrulamientos()
         else:
             lamsr = rec_lamsr
         lamsr = np.array(lamsr, dtype=float)
@@ -680,16 +754,16 @@ class Mallacom(object):
 
     def get_histograma_lamr(self, 
                             lamr_min=None, lamr_max=None, 
-                            nbins=5, binwidth=None, opcion="fibras",
+                            nbins=10, binwidth=None, opcion="fibras",
                             csv_file=False):
         if opcion == "fibras":
-            lamsr = self.calcular_enrulamientos()
+            lamsr = self.__calcular_enrulamientos()
         elif opcion == "interfibras":
             lamsr = self.calcular_enrulamientos_de_interfibras()
         else:
             raise ValueError
         #
-        lrs, dlr, conteo = self.calcular_distribucion_de_enrulamiento(rec_lamsr=lamsr, lamr_min=lamr_min,
+        lrs, dlr, conteo = self.__calcular_distribucion_de_enrulamiento(rec_lamsr=lamsr, lamr_min=lamr_min,
                                                                       lamr_max=lamr_max, n=nbins, binwidth=binwidth)
         frecs = np.array(conteo, dtype=float) / float(np.sum(conteo))
         pdf = frecs / dlr
@@ -704,28 +778,43 @@ class Mallacom(object):
                 writer.writerows(rows)
         return lrs, dlr, conteo, frecs, pdf
 
-    def get_histograma_orientaciones(self, nbins=5, opcion="fibras", csv_file=False):
-        if opcion == "fibras":
-            rec_thetas = self.calcular_orientaciones()  # todos los angulos de las fibras
-            # thetas a continuacion son los angulos medio de cada bin
-        elif opcion == "interfibras":
-            raise NotImplementedError
-        else:
-            raise ValueError
-        #
-        thetas, dth, conteo = self.calcular_distribucion_de_orientaciones(rec_orientaciones=rec_thetas, n=nbins)
-        frecs = np.array(conteo, dtype=float) / float(np.sum(conteo))
-        pdf = frecs / dth
-        # si hay opcion de guardar en archivo csv el histograma, lo hago:
-        if csv_file:
-            header = ['theta', 'dth', 'count', 'frec', 'pdf']
-            columns = [thetas, [dth] * len(thetas), conteo, frecs, pdf]
-            rows = [list(row_tuple) for row_tuple in zip(*columns)]
-            with open(csv_file, 'w') as file:
-                writer = csv.writer(file)
-                writer.writerow(header)
-                writer.writerows(rows)
-        return thetas, dth, conteo, frecs, pdf
+    def graficar_histograma_enrulamientos(self, 
+            fig, ax, x_offset=0., dx_mult=1., yvar='pdf',
+            lamr_min=None, lamr_max=None, nbins=10,
+            **kwargs):
+        """ grafica el histograma de reclutamientos
+        que se calcula a partir de las fibras de la malla """
+
+        # Default plot parameters
+        plotparams = {
+            'edgecolor':'k',
+            'color':'gray',
+            'label':None
+        }
+        # Reemplazo por los que doy
+        for key in kwargs: 
+            plotparams[key] = kwargs[key]
+
+        # Obtengo los reclutamientos
+        lamsr, _, conteo, frecs, pdf = self.get_histograma_lamr(lamr_min, lamr_max, nbins)
+
+        # Calculo el ancho de bin a graficar y el offset
+        dlamr = (lamsr[1] - lamsr[0]) # asumiendo uniforme (que lo es)
+        x = lamsr + dlamr * x_offset
+        dx = dlamr * dx_mult
+
+        # Elijo variable de histograma
+        y = {
+            'conteo': conteo, 
+            'frecuencia': frecs,
+            'pdf': pdf
+        }
+        y = y[yvar]
+
+        # Grafico
+        ax.bar(x, y, width=dx, **plotparams)
+        ax.tick_params(axis='both', which='major', pad=15)
+        # - Fin -
 
     def calcular_enrulamientos_de_interfibras(self, rec_infbs_con=None):
         """
@@ -863,7 +952,7 @@ class Mallacom(object):
         # Me fijo segun que variable coloreo las fibras
         if cby == "lamr":
             # calculo los enrulamientos
-            cvar = self.calcular_enrulamientos()
+            cvar = self.__calcular_enrulamientos()
             if cvmin is None: cvmin = np.min(cvar)
             if cvmax is None: cvmax = np.max(cvar)
         elif cby == "fibra":
@@ -876,7 +965,7 @@ class Mallacom(object):
             if cvmax is None: cvmax = self.caps.num - 1
         elif cby == "angulo":
             # calculo las orientaciones
-            cvar = self.calcular_orientaciones()
+            cvar = self.__calc_orient()
             if cvmin is None: cvmin = 0 
             if cvmax is None: cvmax = PI
         elif cby == 'nada': 

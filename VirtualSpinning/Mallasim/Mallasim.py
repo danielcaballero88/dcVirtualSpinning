@@ -15,6 +15,18 @@ DELTAX = DELTA * np.array([1., 0.], dtype=float)
 DELTAY = DELTA * np.array([0., 1.], dtype=float)
 
 
+SMALL_SIZE = 12
+MEDIUM_SIZE = 20
+BIGGER_SIZE = 24
+plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=BIGGER_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+
 class Mallasim(object):
     """
     Mallasim es una clase simplificada de mallas para tratar
