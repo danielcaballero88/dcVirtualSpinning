@@ -459,7 +459,7 @@ class Mallacom(object):
         # ultimo segmento de la fibra
         seg = fib_con[-1] 
         # nodos de seg
-        n0, n1 = seg_con = self.segs.con[seg] 
+        n0, n1 = self.segs.con[seg] 
         # coordenadas xy de los nodos del segmento s
         r0, r1 = self.nods.r[n0], self.nods.r[n1]  
         # pruebo con cada borde
@@ -599,9 +599,8 @@ class Mallacom(object):
 
     def calcular_orientaciones(self):
         """ calcular las orientaciones de las fibras de toda la malla """
-        thetas_f = list()
-        l = len(self.fibs.con)
-        for f in range(l):
+        thetas_f = []
+        for f in range(self.fibs.num):
             theta_f = self.calcular_orientacion_extremo_extremo_de_una_fibra(f)
             thetas_f.append(theta_f)
         return thetas_f
@@ -834,56 +833,69 @@ class Mallacom(object):
         fig.colorbar(sm)
 
     @staticmethod
-    def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
+    def trunc_cm(cmap, minval=0.0, maxval=1.0, n=100):
         new_cmap = colors.LinearSegmentedColormap.from_list(
             'trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
             cmap(np.linspace(minval, maxval, n)))
         return new_cmap
 
     def pre_graficar_fibras(self, fig, ax, 
-                            ncapas=None, 
-                            lamr_min=None, lamr_max=None, 
-                            color_por="nada",
-                            byn=False, cmap='jet', barracolor=True,
-                            colores_cm=None, ncolores_cm=20,
-                            linewidth=2):
-        lw = linewidth
-        # preparo un mapa de colores mapeable por escalar
+                            ncapas=None,  
+                            cby="nada", cvmin=None, cvmax=None,
+                            byn=False, cmap='jet', 
+                            cbar=True, cbar_ticks=None,
+                            clist=None, N_clist=20,
+                            **kwargs):
+
+        lw = kwargs.get('linewidth', None)
+
+        # Preparo el mapa de colores que voy a usar
         if byn:
-            mi_colormap = cm.get_cmap('gray_r')
-            # lo trunco para que no incluya el cero (blanco puro que no hace contraste con el fondo)
-            mi_colormap = self.truncate_colormap(mi_colormap, 0.2, 0.7)
-        elif colores_cm is not None:
-            mi_colormap = colors.LinearSegmentedColormap.from_list("mi_colormap", colores_cm, N=ncolores_cm)
+            mi_cm = cm.get_cmap('gray_r') # 0=blanco, 1=negro
+            # Lo trunco para que no incluya el cero 
+            # (blanco puro que no hace contraste con el fondo)
+            mi_cm = self.trunc_cm(mi_cm, 0.2, 0.7) 
+        elif clist is not None:
+            mi_cm = colors.LinearSegmentedColormap.from_list("mi_cm", clist, N=N_clist)
         else:
-            mi_colormap = cm.get_cmap(cmap)  # default: jet
-            if colores_cm is not None:
-                mi_colormap = colors.LinearSegmentedColormap.from_list("mi_colormap", colores_cm, N=ncolores_cm)
-        if color_por == "lamr":
+            mi_cm = cm.get_cmap(cmap)  # default: jet
+
+        # Me fijo segun que variable coloreo las fibras
+        if cby == "lamr":
             # calculo los enrulamientos
-            lamsr = self.calcular_enrulamientos()
-            if lamr_min is None:
-                lamr_min = np.min(lamsr)
-            if lamr_max is None:
-                lamr_max = np.max(lamsr)
-            sm = plt.cm.ScalarMappable(cmap=mi_colormap, norm=plt.Normalize(vmin=lamr_min, vmax=lamr_max))
-        elif color_por == "fibra":
-            sm = plt.cm.ScalarMappable(cmap=mi_colormap, norm=plt.Normalize(vmin=0, vmax=len(self.fibs.con) - 1))
-        elif color_por == "capa":
-            sm = plt.cm.ScalarMappable(cmap=mi_colormap, norm=plt.Normalize(vmin=0, vmax=len(self.caps.con) - 1))
-        elif color_por == "angulo":
-            sm = plt.cm.ScalarMappable(cmap=mi_colormap, norm=plt.Normalize(vmin=0, vmax=PI))
-        # dibujo las fibras (los segmentos)
-        # preparo las listas, una lista para cada fibra
-        xx = [list() for f in self.fibs.con]
-        yy = [list() for f in self.fibs.con]
-        grafs = list()
-        if ncapas is None:
-            caps_con = self.caps.con
-        else:
-            caps_con = self.caps.con[:ncapas]
-        for c, c_con in enumerate(caps_con):  # recorro las capas
-            for f in c_con:  # recorro las fibra de la capa
+            cvar = self.calcular_enrulamientos()
+            if cvmin is None: cvmin = np.min(cvar)
+            if cvmax is None: cvmax = np.max(cvar)
+        elif cby == "fibra":
+            cvar = list(range(self.fibs.num))
+            if cvmin is None: cvmin = 0
+            if cvmax is None: cvmax = self.fibs.num - 1
+        elif cby == "capa":
+            cvar = [self.caps.conT[f] for f in range(self.fibs.num)]
+            if cvmin is None: cvmin = 0
+            if cvmax is None: cvmax = self.caps.num - 1
+        elif cby == "angulo":
+            # calculo las orientaciones
+            cvar = self.calcular_orientaciones()
+            if cvmin is None: cvmin = 0 
+            if cvmax is None: cvmax = PI
+        elif cby == 'nada': 
+            mi_cm = cm.get_cmap('gray')
+            cvar = [0]*self.fibs.num
+
+        # Armo un ScalarMappable Colormap para poder colorear segun variable
+        sm = plt.cm.ScalarMappable(cmap=mi_cm, norm=plt.Normalize(vmin=cvmin, vmax=cvmax))
+
+        # Dibujo las fibras (sus segmentos)
+        # Preparo las listas, una lista para cada fibra
+        xx = [[] for f in self.fibs.con]
+        yy = [[] for f in self.fibs.con]
+        grafs = []
+
+        # Recorro las capas
+        for c_con in self.caps.con[:ncapas]:
+            # Recorro las fibra de la capa
+            for f in c_con:  
                 f_con = self.fibs.con[f]
                 # antes de recorrer los segmentos de cada fibra
                 # el primer nodo del primer segmento lo agrego antes del bucle
@@ -898,27 +910,19 @@ class Mallacom(object):
                     r = self.nods.r[n]  # coordenadas de ese nodo
                     xx[f].append(r[0])
                     yy[f].append(r[1])
-                if color_por == "lamr":
-                    col = sm.to_rgba(lamsr[f])
-                elif color_por == "fibra":
-                    col = sm.to_rgba(f)
-                elif color_por == "capa":
-                    col = sm.to_rgba(c)
-                    # aux = float(len(self.caps.con) - 1)
-                    # lw = linewidth*(1. - 0.5*float(c)/aux)
-                    # lw = linewidth*(0.7 + 0.3*float(c)/aux)
-                elif color_por == "angulo":
-                    theta = self.calcular_orientacion_extremo_extremo_de_una_fibra(f)
-                    col = sm.to_rgba(theta)
-                elif color_por == "nada":
-                    col = "k"
+
+                    # Color 
+                    col = sm.to_rgba(cvar[f])
+
                 # print lw
                 grafs.append(ax.plot(xx[f], yy[f], linestyle="-", marker="", label=str(f), color=col, linewidth=lw))
-        if barracolor and color_por not in ("nada", "fibra"):
+        
+        # Colorbar
+        if cbar:
             sm._A = []
             cbar = fig.colorbar(sm)
-            if color_por == "capa":
-                cbar.set_ticks(range(len(self.caps.con)))
+        if cbar_ticks is not None:
+            cbar.set_ticks(cbar_ticks)
 
     def pre_graficar_interfibras(self, fig, ax, 
                                 lamr_min=None, lamr_max=None, 
@@ -932,7 +936,7 @@ class Mallacom(object):
             # mi_colormap = plt.cm.gray_r
             mi_colormap = cm.get_cmap('gray_r')
             # lo trunco para que no incluya el cero (blanco puro que no hace contraste con el fondo)
-            mi_colormap = self.truncate_colormap(mi_colormap, 0.4, 1.0)
+            mi_colormap = self.trunc_cm(mi_colormap, 0.4, 1.0)
         elif colores_cm is not None:
                 mi_colormap = colors.LinearSegmentedColormap.from_list("mi_colormap", colores_cm, N=ncolores_cm)
         else:
