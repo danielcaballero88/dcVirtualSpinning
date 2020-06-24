@@ -25,15 +25,14 @@ def main():
 
     fig, ax = plt.subplots()
     mc_i.marco.graficar(fig, ax)
-    mc_i.pre_graficar_fibras(fig, ax, cbar=False)
+    mc_i.pre_graficar_fibras(fig, ax, cbar=True)
 
     fig, ax = plt.subplots()
     ms.pre_graficar_bordes(fig, ax)
-    colores_cm = ['blue', 'red']
-    ms.pre_graficar(fig, ax, color_por="lamr", linewidth=1.5,
-                    # lam_min=0.0, lam_max=100.,
-                    barracolor=False, colormap="rainbow", colores_cm=colores_cm, maxnfibs=3000,
-                    afin=False, colorafin="k", linewidthafin=1.5)
+    colores = ['blue', 'red']
+    ms.pre_graficar(fig, ax, cby="lamr",
+                    cbar=True, cmap="rainbow",
+                    plot_afin=False)
     plt.show()
 
 

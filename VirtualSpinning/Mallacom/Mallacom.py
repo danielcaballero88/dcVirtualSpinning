@@ -881,6 +881,8 @@ class Mallacom(object):
             if cvmax is None: cvmax = PI
         elif cby == 'nada': 
             mi_cm = cm.get_cmap('gray')
+            cvmin = 0
+            cvmax = 1
             cvar = [0]*self.fibs.num
 
         # Armo un ScalarMappable Colormap para poder colorear segun variable

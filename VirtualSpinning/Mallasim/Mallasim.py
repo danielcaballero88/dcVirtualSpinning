@@ -206,7 +206,7 @@ class Mallasim(object):
             fig.colorbar(sm)
 
     @staticmethod
-    def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
+    def trunc_cm(cmap, minval=0.0, maxval=1.0, n=100):
         new_cmap = colors.LinearSegmentedColormap.from_list(
             'trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
             cmap(np.linspace(minval, maxval, n)))
@@ -224,83 +224,76 @@ class Mallasim(object):
                 tens[f] = Eb * (lamrL - 1.) + Et * (lams[f] / lamrL - 1.)
         return tens
 
-    def pre_graficar(self, fig, ax, linewidth=2,
-                     lam_min=None, lam_max=None,
-                     maxnfibs=5000, byn=False, color_por="nada", barracolor=False, colormap="jet", colores_cm=None,
-                     ncolores_cm=100,
-                     afin=True, colorafin="gray", linewidthafin=2):
+    def pre_graficar(self, fig, ax,
+                    maxnfibs=5000,
+                    cby='nada', cvmin=None, cvmax=None,
+                    byn=False, cmap='jet', cbar=True, cbar_ticks=None,
+                    clist=None, N_clist=20,
+                    plot_inic=False, parplotinic={},
+                    plot_afin=False, parplotafin={},
+                    plot_broken=False, plot_enrul=False,
+                    parplot={}):
         """
         Metodo para graficar el rve de una Mallasim
         """
 
         print("Pregraficando Mallasim")
 
+        # Preparo el mapa de colores
+        if byn:
+            mi_cm = cm.get_cmap('gray_r') # 0=blanco, 1=negro
+            # Lo trunco para que no incluya el cero 
+            # (blanco puro que no hace contraste con el fondo)
+            mi_cm = self.trunc_cm(mi_cm, 0.4, 1.0) 
+        elif clist is not None:
+            mi_cm = colors.LinearSegmentedColormap.from_list("mi_cm", clist, N=N_clist)
+        else:
+            mi_cm = cm.get_cmap(cmap)  # default: jet
+
         # Calculo variables de las fibras
-        lams = self.fibras.calcular_lams(self.nodos.r)
+        lams = self.fibras.calcular_lams(self.nodos.r)[:,0]
         lamsr = self.fibras.lamsr
         lamps = self.fibras.lamps
-        lams_ef = lams[:, 0] / lamsr / lamps
+        lams_ef = lams / lamsr / lamps
 
-        # Me fijo si es una malla deformada
-        if self.status_deformed:
-            Fmacro = self.Fmacro
-        else:
-            Fmacro = np.array([[1., 0.], [0., 1.]])
+        # Me fijo segun que variable coloreo
+        if cby == 'lamr':
+            cvar = lamsr
+            if cvmin is None: cvmin = lamsr.min() 
+            if cvmax is None: cvmax = lamsr.max()
+        elif cby == 'lam':
+            cvar = lams
+            if cvmin is None: cvmin = lams.min() 
+            if cvmax is None: cvmax = lams.max()
+        elif cby == 'lam_ef':
+            cvar = lams_ef
+            if cvmin is None: cvmin = lams_ef.min() 
+            if cvmax is None: cvmax = lams_ef.max()
+        elif cby == 'fibra':
+            cvar = list(range(self.fibras.n))
+            if cvmin is None: cvmin = 0
+            if cvmax is None: cvmax = self.fibras.n - 1
+        elif cby == 'reclutamiento': 
+            mask = lams_ef > 1.0 + 1.0e-6
+            cvar = np.zeros(self.fibras.n, dtype=float)
+            cvar[mask] = 1.
+            cvmin = 0
+            cvmax = 1
+        elif cby == 'nada':
+            cvar = np.zeros(self.fibras.n, dtype=float)
+            cvmin = 0
+            cvmax = 1
+            mi_cm = cm.get_cmap('gray')
 
-        # Selecciono el mapa de colores
-        if byn:
-            mi_cm = cm.get_cmap('gray_r')
-            # lo trunco para que no incluya el cero (blanco puro que no hace contraste con el fondo)
-            mi_cm = self.truncate_colormap(mi_cm, 0.4, 1.0)
-        elif colores_cm is not None:
-            mi_cm = colors.LinearSegmentedColormap.from_list("mi_cm", colores_cm, N=ncolores_cm)
-        else: 
-            mi_cm = cm.get_cmap(colormap)
-
-        # Me fijo segun cual variable voy a colorear
-        # TODO: simplificar este codigo
-        if color_por == "lamr":
-            if lam_min is None:
-                lam_min = np.min(lamsr)
-            if lam_max is None:
-                lam_max = np.max(lamsr)
-            sm = plt.cm.ScalarMappable(cmap=mi_cm, norm=plt.Normalize(vmin=lam_min, vmax=lam_max))
-        elif color_por == "lam":
-            if lam_min is None:
-                lam_min = np.min(lams)
-            if lam_max is None:
-                lam_max = np.max(lams)
-            sm = plt.cm.ScalarMappable(cmap=mi_cm, norm=plt.Normalize(vmin=lam_min, vmax=lam_max))
-        elif color_por == "lam_ef":
-            if lam_min is None:
-                lam_min = np.min(lams_ef)
-            if lam_max is None:
-                lam_max = np.max(lams_ef)
-            sm = plt.cm.ScalarMappable(cmap=mi_cm, norm=plt.Normalize(vmin=lam_min, vmax=lam_max))
-        elif color_por == "tension":
-            tensiones = self.calcular_tensiones_fibras(lams, 2.9e3, 2.0, lamsr, lamps)
-            if lam_min is None:
-                lam_min = np.min(tensiones)
-            if lam_max is None:
-                lam_max = np.max(tensiones)
-            sm = plt.cm.ScalarMappable(cmap=mi_cm, norm=plt.Normalize(vmin=lam_min, vmax=lam_max))
-        elif color_por == "fibra":
-            sm = plt.cm.ScalarMappable(cmap=mi_cm, norm=plt.Normalize(vmin=0, vmax=self.fibras.n - 1))
-        elif color_por == "reclutamiento":
-            lams_ef = lams[:, 0] / lamsr / lamps
-            sm = plt.cm.ScalarMappable(cmap=mi_cm, norm=plt.Normalize(vmin=0, vmax=self.fibras.n - 1))  # al pedo
-        elif color_por == "nada":
-            sm = plt.cm.ScalarMappable(cmap=mi_cm, norm=plt.Normalize(vmin=0, vmax=self.fibras.n - 1))  # al pedo
+        # Armo un ScalarMappable Colormap para poder colorear segun variable
+        sm = plt.cm.ScalarMappable(cmap=mi_cm, norm=plt.Normalize(vmin=cvmin, vmax=cvmax))
 
         # Decido si ademas de la malla deformada grafico la deformacion afin para comparar
-        if afin is False or Fmacro is None:
-            # si se da Fmacro r0 se modifica para que sean las coordenadas de deformacion afin
-            # de lo contrario quedan las iniciales
-            r0 = self.nodos.r0
-        else:
-            r0 = np.matmul(self.nodos.r0, np.transpose(Fmacro))
+        if plot_afin: rafin = np.matmul(self.nodos.r0, np.transpose(self.Fmacro))
+        # Idem para la configuracion inicial 
+        if plot_inic: rinic = self.nodos.r0
 
-        # Me fijo cuantas fibras voy a graficar
+        # Me fijo si tengo un maximo numero de fibras a graficar
         nfibs = self.fibras.n
         if maxnfibs < nfibs: nfibs = maxnfibs
 
@@ -310,6 +303,7 @@ class Mallasim(object):
 
         # Empiezo el bucle para graficar
         for f in range(nfibs):
+
             # Imprimo el porcentaje de completado
             pc = round(float(f) / nfibs * 100., 0)
             if pc in pctp:
@@ -321,48 +315,37 @@ class Mallasim(object):
             # Grafico la fibra f
             n0, n1 = self.fibras.con[f]
 
-            # Grafico configuracion afin o inicial si asi lo quise (para comparar)
-            if afin and Fmacro is not None:
-                x0, y0 = r0[n0]
-                x1, y1 = r0[n1]
-                ax.plot([x0, x1], [y0, y1], ls=":", c=colorafin, linewidth=linewidthafin)
+            # Grafico configuracion inicial (para comparar)
+            if plot_inic: 
+                x0, y0 = rinic[n0]
+                x1, y1 = rinic[n1]
+                ax.plot([x0, x1], [y0, y1], **parplotinic)
+
+            # Grafico configuracion afin (para comparar)
+            if plot_afin:
+                x0, y0 = rafin[n0]
+                x1, y1 = rafin[n1]
+                ax.plot([x0, x1], [y0, y1], **parplotafin)
             
             # Grafico configuracion deformada
             x0, y0 = self.nodos.r[n0]
             x1, y1 = self.nodos.r[n1]
-            # TODO: simplificar esto junto con lo anterior
-            if color_por == "lamr":
-                c = sm.to_rgba(lamsr[f])
-            elif color_por == "lam":
-                c = sm.to_rgba(lams[f, 0])
-            elif color_por == "lam_ef":
-                c = sm.to_rgba(lams_ef[f])
-            elif color_por == "tension":
-                c = sm.to_rgba(tensiones[f])
-            elif color_por == "fibra":
-                c = sm.to_rgba(f)
-            elif color_por == "reclutamiento":
-                if lams_ef[f] > 1. + 1.e-6:
-                    c = "red"
-                else:
-                    c = "blue"
-            elif color_por == "nada":
-                c = "k"
-
+            c = sm.to_rgba(cvar[f])
             # --
             # Si la fibra se ha roto o aun esta sin reclutar le pongo otro color
-            # if self.fibras.brokens[f]:
-            #     c = "gray"
-            # elif lams_ef[f] < 1.00001:
-            #     c = "k"
+            if plot_broken:
+                if self.fibras.brokens[f]:
+                    c = "gray"
+            if plot_enrul:
+                if lams_ef[f] < 1.00001:
+                    c = "k"
             # --
-            
             # La agrego al plot
-            ax.plot([x0, x1], [y0, y1], ls="-", linewidth=linewidth, c=c)
+            ax.plot([x0, x1], [y0, y1], c=c, **parplot)
         print()
 
         # Agrego la colorbar si asi lo quise
-        if barracolor:
+        if cbar:
             sm._A = []
             fig.colorbar(sm)
 
