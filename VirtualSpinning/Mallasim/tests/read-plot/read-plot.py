@@ -15,9 +15,9 @@ def main():
     print('DIR: ', DIR)
     print('__file__: ', FILE)
 
-    mc = Mallacom.leer_de_archivo(DIR / 'temp' / 'malla.txt')
-    mc_i = Mallacom.leer_de_archivo(DIR / 'temp' / 'malla_i.txt')
-    ms = Mallasim.leer_desde_archivo(DIR / 'temp' / 'malla_i_s.txt')
+    mc = Mallacom.leer_de_archivo(DIR / 'malla.txt')
+    mc_i = Mallacom.leer_de_archivo(DIR / 'malla_i.txt')
+    ms = Mallasim.leer_desde_archivo(DIR / 'malla_i_s.txt')
 
     fig, ax = plt.subplots()
     mc.marco.graficar(fig, ax)

@@ -36,14 +36,14 @@ def main():
     }
     mc = Mallacom(**params, name='malla')
     mc.make_malla()
-    archivo = DIR / 'temp' / f'{mc.name}.txt'
+    archivo = DIR / f'{mc.name}.txt'
     mc.guardar_en_archivo(archivo)
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111)
     mc.marco.graficar(fig, ax)
     mc.pre_graficar_fibras(fig, ax, cby="capa", byn=True)
     print('time: ', time.time() - start)
-    fig.savefig(DIR / 'temp' / 'malla.png')
+    fig.savefig(DIR / 'malla.png')
     plt.show()
 
 
