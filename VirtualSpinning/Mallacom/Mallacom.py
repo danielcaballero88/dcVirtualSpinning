@@ -871,7 +871,7 @@ class Mallacom(object):
             if cvmin is None: cvmin = 0
             if cvmax is None: cvmax = self.fibs.num - 1
         elif cby == "capa":
-            cvar = [self.caps.conT[f] for f in range(self.fibs.num)]
+            cvar = [self.caps.conT[f][0] for f in range(self.fibs.num)]
             if cvmin is None: cvmin = 0
             if cvmax is None: cvmax = self.caps.num - 1
         elif cby == "angulo":
