@@ -6,10 +6,35 @@ es una mezcla que resulta util tener por separado """
 
 import numpy as np
 from scipy import stats
+from itertools import product
 
 
 PI = np.pi
 
+
+def dproduct(dic):
+    """
+    Similar a itertools.product pero en lugar de recibir varias listas
+    recibe un diccionario con listas. Y en lugar de devolver solamente las
+    combinaciones, lo hace en forma de diccionario con las keys correspondientes
+
+    Args:
+        dic: diccionario donde cada item es una lista
+
+    Returns:
+        result: lista con diccionarios con todas las combinaciones posibles
+    """
+    # Separo la lista de keys
+    keys = tuple(dic.keys())
+    # Convierto los datos a una lista de listas para usar itertools
+    lol = [dic[key] for key in keys]
+    # Hago las combinaciones 
+    combs = product(*lol)
+    # Vuelvo a formar los diccionarios con las combinaciones
+    result = [{key: comb[i] for i, key in enumerate(keys)} for comb in combs]
+    # Fin
+    return result
+    
 
 def append_to_keys(dic, keys, val):
     for key in keys:

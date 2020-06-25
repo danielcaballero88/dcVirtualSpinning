@@ -14,6 +14,7 @@ from VirtualSpinning.aux import calcular_interseccion_entre_segmentos as calcula
 from VirtualSpinning.aux import find_string_in_file
 from VirtualSpinning.aux import calcular_longitud_de_segmento
 from VirtualSpinning.aux import calcular_angulo_de_segmento
+from VirtualSpinning.aux import dproduct
 
 
 MESH_PARAMS = ('L', 'D', 'vf', 'ls', 'dth', 'nc', 'fdo')
@@ -35,21 +36,43 @@ plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 class Mallacom(object):
     def __init__(self, L, D, vf, ls, dth, nc, fdo=None, nm=1, name='malla'):
         self.name = name
-        self.params = {
-            'L': L,
-            'D': D,
-            'vf': vf,
-            'ls': ls,
-            'dth': dth,
-            'fdo': fdo,
-            'nc': nc,
-            'nm': nm
+        self.param = {
+            'L': L,  # longitud de lado de recinto
+            'D': D,  # diamtro de las fibras
+            'vf': vf,  # volume fraction
+            'ls': ls,  # longitud de segmento
+            'dth': dth,  # angulo de desviacion maximo entre segmentos
+            'fdo': fdo,  # funcion distribucion de orientaciones
+            'nc': nc,  # numero de capas
+            'nm': nm  # numero de malla (sirve de identificador)
         }
         self.caps = Capas()  # lista vacia
         self.fibs = Fibras()  # lista vacia
         self.segs = Segmentos()  # lista vacia
         self.nods = Nodos()  # tiene dos listas vacias
         self.marco = Marco(L)
+
+    @classmethod
+    def make_from_param(cls, param, name='malla'):
+        malla = cls(**param) 
+        malla.make_malla()
+        return malla
+
+    @classmethod
+    def make_from_params(cls, params, names=None):
+        if names is None: names = [f'malla_{i:02d}' for i in range(len(params))]
+        mallas = [] 
+        for i, param in enumerate(params): 
+            malla = cls(**param, name=names[i]) 
+            malla.make_malla()
+            mallas.append(malla) 
+        return mallas
+
+    @classmethod
+    def make_combinaciones(cls, dparam, names=None):
+        params = dproduct(dparam)
+        mallas = cls.make_from_params(params, names)
+        return mallas
 
     @classmethod
     def leer_de_archivo(cls, archivo="Malla.txt"):
@@ -157,11 +180,11 @@ class Mallacom(object):
         # ---
         # primero escribo L, ls y dtheta
         fid.write("*Parametros (L, Dm, volfrac, ls, devangmax) \n")
-        fid.write("{:20.8f}\n".format(self.params['L']))
-        fid.write("{:20.8f}\n".format(self.params['D']))
-        fid.write("{:20.8f}\n".format(self.params['vf']))
-        fid.write("{:20.8f}\n".format(self.params['ls']))
-        fid.write("{:20.8f}\n".format(self.params['dth'] * 180. / PI))  # lo escribo en grados
+        fid.write("{:20.8f}\n".format(self.param['L']))
+        fid.write("{:20.8f}\n".format(self.param['D']))
+        fid.write("{:20.8f}\n".format(self.param['vf']))
+        fid.write("{:20.8f}\n".format(self.param['ls']))
+        fid.write("{:20.8f}\n".format(self.param['dth'] * 180. / PI))  # lo escribo en grados
         # ---
         # escribo los nodos: indice, tipo, y coordenadas
         dString = "*Coordenadas \n" + str(len(self.nods.r)) + "\n"
@@ -210,7 +233,7 @@ class Mallacom(object):
         """
         armo una malla
         """
-        for _ic in range(self.params['nc']):
+        for _ic in range(self.param['nc']):
             self.make_capa()
 
     def make_capa(self, **kwargs):
@@ -221,7 +244,7 @@ class Mallacom(object):
         """
 
         # me fijo si reemplazo parametros globales de la malla
-        cp = self.params.copy()  # cp = capa_params
+        cp = self.param.copy()  # cp = capa_params
         for key in kwargs: 
             assert key in MESH_PARAMS
             cp[key] = kwargs[key]
@@ -375,7 +398,7 @@ class Mallacom(object):
         # el volumen total de la capa es:
         # TODO: el calculo deberia hacerse con los parametros de la capa
         # pero esos no estan disponibles ahora mismo, deberia guardarlos en la capa
-        volc = self.params['L']**2 * self.params['D']
+        volc = self.param['L']**2 * self.param['D']
         # luego la fraccion de volumen
         fracvol = volfs / volc
         return fracvol
