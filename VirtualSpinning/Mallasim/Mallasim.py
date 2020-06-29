@@ -6,6 +6,7 @@ from matplotlib import cm
 # Local imports
 from .Fibras import Fibras
 from .Nodos import Nodos
+from .Marco import Marco
 from VirtualSpinning.aux import find_string_in_file
 
 # Parameters
@@ -44,6 +45,7 @@ class Mallasim(object):
         self.Fmacro = None
         self.Tmacro = None
         self.Ncapas = None
+        self.marco = Marco(L)
         self.nparcon = 0 
         self.parcon = []
 
@@ -174,22 +176,12 @@ class Mallasim(object):
         # ---
         fid.close()
 
-    def pre_graficar_bordes(self, fig, ax, byn=False):
+    def pre_graficar_bordes(self, fig, ax, limites={}):
         # deformacion afin del borde
-        r_corners = np.array([[-.5, -.5], [.5, -.5], [.5, .5], [-.5, .5], [-.5, -.5]]) * self.L
         if self.status_deformed:
-            Fmacro = self.Fmacro
-            r_corners = np.matmul(r_corners, np.transpose(Fmacro))
-        # seteo limites
-        lim_left = np.min(r_corners[:, 0])
-        lim_right = np.max(r_corners[:, 0])
-        lim_bottom = np.min(r_corners[:, 1])
-        lim_top = np.max(r_corners[:, 1])
-        margen = 0.1 * self.L
-        ax.set_xlim(left=lim_left - margen, right=lim_right + margen)
-        ax.set_ylim(bottom=lim_bottom - margen, top=lim_top + margen)
-        # dibujo los bordes del rve
-        ax.plot(r_corners[:, 0], r_corners[:, 1], linestyle=":", c="gray")
+            self.marco.deformar(self.Fmacro)
+        # graficar
+        self.marco.graficar(fig, ax, limites)
 
     def pre_graficar_0(self, fig, ax, lamr_min=None, lamr_max=None, plotnodos=False, maxnfibs=500, colorbar=False):
         mi_cm = cm.get_cmap('jet')
@@ -271,16 +263,12 @@ class Mallasim(object):
         # Me fijo segun que variable coloreo
         if cby == 'lamr':
             cvar = lamsr
-            if cvmin is None: cvmin = lamsr.min() 
-            if cvmax is None: cvmax = lamsr.max()
         elif cby == 'lam':
             cvar = lams
-            if cvmin is None: cvmin = lams.min() 
-            if cvmax is None: cvmax = lams.max()
         elif cby == 'lam_ef':
             cvar = lams_ef
-            if cvmin is None: cvmin = lams_ef.min() 
-            if cvmax is None: cvmax = lams_ef.max()
+        elif cby == 'lamp':
+            cvar = lamps
         elif cby == 'fibra':
             cvar = list(range(self.fibras.n))
             if cvmin is None: cvmin = 0
@@ -296,6 +284,10 @@ class Mallasim(object):
             cvmin = 0
             cvmax = 1
             mi_cm = cm.get_cmap('gray')
+
+        # Pongo los min y max defaults en cayo de que no esten seteados ya
+        if cvmin is None: cvmin = cvar.min()
+        if cvmax is None: cvmax = cvar.max()
 
         # Armo un ScalarMappable Colormap para poder colorear segun variable
         sm = plt.cm.ScalarMappable(cmap=mi_cm, norm=plt.Normalize(vmin=cvmin, vmax=cvmax))
@@ -337,6 +329,9 @@ class Mallasim(object):
             if plot_afin:
                 x0, y0 = rafin[n0]
                 x1, y1 = rafin[n1]
+                # algunos defaults
+                parplotafin['c'] = parplotafin.get('c', 'gray')
+                parplotafin['ls'] = parplotafin.get('ls', ':')
                 ax.plot([x0, x1], [y0, y1], **parplotafin)
             
             # Grafico configuracion deformada
