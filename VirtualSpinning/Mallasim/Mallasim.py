@@ -48,7 +48,7 @@ class Mallasim(object):
         self.parcon = []
 
     @classmethod
-    def leer_desde_archivo(cls, nomarchivo):
+    def leer_de_archivo(cls, nomarchivo):
         fid = open(nomarchivo, 'r')
         # primero leo los parametros
         target = "*parametros"
