@@ -230,7 +230,7 @@ class Mallasim(object):
 
     def pre_graficar(self, fig, ax,
                     maxnfibs=5000,
-                    cby='nada', cvmin=None, cvmax=None,
+                    cby='nada', cvar=None, cvmin=None, cvmax=None,
                     byn=False, cmap='jet', cbar=True, cbar_ticks=None,
                     clist=None, N_clist=20,
                     plot_inic=False, parplotinic={},
@@ -255,35 +255,38 @@ class Mallasim(object):
             mi_cm = cm.get_cmap(cmap)  # default: jet
 
         # Calculo variables de las fibras
-        lams = self.fibras.calcular_lams(self.nodos.r)[:,0]
+        lams = self.fibras.calcular_lams(self.nodos.r)
         lamsr = self.fibras.lamsr
         lamps = self.fibras.lamps
         lams_ef = lams / lamsr / lamps
 
         # Me fijo segun que variable coloreo
-        if cby == 'lamr':
+        if cby is 'lamr':
             cvar = lamsr
-        elif cby == 'lam':
+        elif cby is 'lam':
             cvar = lams
-        elif cby == 'lam_ef':
+        elif cby is 'lam_ef':
             cvar = lams_ef
-        elif cby == 'lamp':
+        elif cby is 'lamp':
             cvar = lamps
-        elif cby == 'fibra':
+        elif cby is 'fibra':
             cvar = list(range(self.fibras.n))
             if cvmin is None: cvmin = 0
             if cvmax is None: cvmax = self.fibras.n - 1
-        elif cby == 'reclutamiento': 
+        elif cby is 'reclutamiento': 
             mask = lams_ef > 1.0 + 1.0e-6
             cvar = np.zeros(self.fibras.n, dtype=float)
             cvar[mask] = 1.
             cvmin = 0
             cvmax = 1
-        elif cby == 'nada':
+        elif cby is 'nada':
             cvar = np.zeros(self.fibras.n, dtype=float)
             cvmin = 0
             cvmax = 1
             mi_cm = cm.get_cmap('gray')
+        else:
+            cvar = cby
+
 
         # Pongo los min y max defaults en cayo de que no esten seteados ya
         if cvmin is None: cvmin = cvar.min()
