@@ -183,6 +183,10 @@ class Mallasim(object):
         # graficar
         self.marco.graficar(fig, ax, limites)
 
+    def graficar_marco(self, fig, ax, limites={}):
+        """ alias para pre_graficar_bordes """ 
+        self.pre_graficar_bordes(fig, ax, limites)
+
     def pre_graficar_0(self, fig, ax, lamr_min=None, lamr_max=None, plotnodos=False, maxnfibs=500, colorbar=False):
         mi_cm = cm.get_cmap('jet')
         lamsr = self.fibras.lamsr
