@@ -1,0 +1,43 @@
+# Archivo de configuracion para correr el solver de mallas de nanofibras en fortran
+
+* Numero de acciones
+1
+4
+
+* 1
+Intersectar
+1   malla.txt
+10
+.true.
+
+
+* 2
+Simplificar
+1   malla.txt
+
+
+* 3 
+Traccion
+1   malla.txt
+0
+5000    2000
+5.d-4   5.d-5
+100.d0  1.0d-1
+1.d-2   1.d-2   -2.d-2    1.2d0
+1   1.d-2
+
+
+* 4 
+Uniaxial
+1   malla.txt
+0
+5000    2000
+5.d-4   5.d-5
+100.d0  1.0d-1
+1.d-3   1.d-2   -1.d-2   1.d-2    1.2d0
+1   1.d-2
+
+
+* Parametros constitutivos
+7
+4   2.9d3   1.d-3   1.d-8   4.5d0   0.d0    90.d0
