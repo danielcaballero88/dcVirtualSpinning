@@ -265,31 +265,35 @@ class Mallasim(object):
         lams_ef = lams / lamsr / lamps
 
         # Me fijo segun que variable coloreo
-        if cby is 'lamr':
-            cvar = lamsr
-        elif cby is 'lam':
-            cvar = lams
-        elif cby is 'lam_ef':
-            cvar = lams_ef
-        elif cby is 'lamp':
-            cvar = lamps
-        elif cby is 'fibra':
-            cvar = list(range(self.fibras.n))
-            if cvmin is None: cvmin = 0
-            if cvmax is None: cvmax = self.fibras.n - 1
-        elif cby is 'reclutamiento': 
-            mask = lams_ef > 1.0 + 1.0e-6
-            cvar = np.zeros(self.fibras.n, dtype=float)
-            cvar[mask] = 1.
-            cvmin = 0
-            cvmax = 1
-        elif cby is 'nada':
-            cvar = np.zeros(self.fibras.n, dtype=float)
-            cvmin = 0
-            cvmax = 1
-            mi_cm = cm.get_cmap('gray')
-        else:
+        if isinstance(cvar, np.ndarray):
             cvar = cby
+        elif isinstance(cvar, str):
+            if cby == 'lamr':
+                cvar = lamsr
+            elif cby == 'lam':
+                cvar = lams
+            elif cby == 'lam_ef':
+                cvar = lams_ef
+            elif cby == 'lamp':
+                cvar = lamps
+            elif cby == 'fibra':
+                cvar = list(range(self.fibras.n))
+                if cvmin is None: cvmin = 0
+                if cvmax is None: cvmax = self.fibras.n - 1
+            elif cby == 'reclutamiento': 
+                mask = lams_ef > 1.0 + 1.0e-6
+                cvar = np.zeros(self.fibras.n, dtype=float)
+                cvar[mask] = 1.
+                cvmin = 0
+                cvmax = 1
+            elif cby == 'nada':
+                cvar = np.zeros(self.fibras.n, dtype=float)
+                cvmin = 0
+                cvmax = 1
+                mi_cm = cm.get_cmap('gray')
+        else:
+            raise ValueError('cby must be ndarray or string')
+            
 
 
         # Pongo los min y max defaults en cayo de que no esten seteados ya
