@@ -265,9 +265,9 @@ class Mallasim(object):
         lams_ef = lams / lamsr / lamps
 
         # Me fijo segun que variable coloreo
-        if isinstance(cvar, np.ndarray):
+        if isinstance(cby, np.ndarray):
             cvar = cby
-        elif isinstance(cvar, str):
+        elif isinstance(cby, str):
             if cby == 'lamr':
                 cvar = lamsr
             elif cby == 'lam':
@@ -292,6 +292,8 @@ class Mallasim(object):
                 cvmax = 1
                 mi_cm = cm.get_cmap('gray')
         else:
+            print('cby: ', cby)
+            print('type: ', type(cby))
             raise ValueError('cby must be ndarray or string')
             
 
