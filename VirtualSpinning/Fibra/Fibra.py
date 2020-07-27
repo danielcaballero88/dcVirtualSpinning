@@ -1,5 +1,6 @@
 import math
 import numpy as np
+from VirtualSpinning.aux import find_string_in_file
 
 
 class Fibra(object):
@@ -18,6 +19,17 @@ class Fibra(object):
         self.broken = False
         self.lamr = lamr
         self.lamp = 1.
+
+    @classmethod 
+    def from_cf(cls, cf, lamr=1.): 
+        with open(cf, 'r') as f:
+            find_string_in_file(f, "* Parametros constitutivos") 
+            _ = int(next(f)) 
+            param = [float(val) for val in next(f).replace('d','e').split()]
+        ilaw, Et, EbEt, doteps, s0, nh, tenbrk = param
+        assert(ilaw == 4) 
+        self = cls(Et, EbEt, doteps, s0, nh, lamr, tenbrk)
+        return self
 
     def calc_ten(self, lam):
         """ 
