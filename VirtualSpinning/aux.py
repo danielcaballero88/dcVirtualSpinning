@@ -59,6 +59,38 @@ def find_string_in_file(fid, target, mandatory=False):
     return ierr
 
 
+def readcols(file, header=False, indices=[0,1], delim=None):
+    """ 
+    Read file with data in separated columns
+    Args:
+        file: filename or path 
+        header: indicates if a header line is read with the data names 
+        indices: indicates what indices to retrieve
+    Returns:
+        names: names of the data, if header is False, returns the indices
+        data: list of lists, where each inner list is a column
+    """
+    # Open file
+    with open(file, 'r') as f: 
+        # Prepare list of lists
+        rows = []
+        # Read header if present
+        if header: 
+            line = next(f)
+            names = [name for name in line.split(delim)]
+        else:
+            names = indices
+        # Read data until end of file
+        for line in f: 
+            vals = [float(val) for val in line.split(delim)]
+            row = []
+            rows.append([vals[i] for i in indices])
+        # Parse rows into columns
+        columns = [list(tuple_column) for tuple_column in zip(*rows)]
+        # Done 
+        return names, *columns
+
+
 def iguales(x, y, tol=1.0e-8):
     """ returns True if x is equal to y, both floats """
     return np.abs(x - y) < tol
