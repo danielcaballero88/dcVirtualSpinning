@@ -21,18 +21,6 @@ MESH_PARAMS = ('L', 'D', 'vf', 'ls', 'dth', 'nc', 'fdo')
 PI = np.pi
 
 
-SMALL_SIZE = 12
-MEDIUM_SIZE = 20
-BIGGER_SIZE = 24
-plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
-plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
-plt.rc('axes', labelsize=BIGGER_SIZE)    # fontsize of the x and y labels
-plt.rc('xtick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
-plt.rc('ytick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
-plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
-plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
-
-
 class Mallacom(object):
     def __init__(self, L, D, vf, ls, dth, nc, fdo=None, nm=1, name='malla'):
         self.name = name

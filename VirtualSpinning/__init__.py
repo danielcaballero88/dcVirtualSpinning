@@ -1,3 +1,4 @@
-from .Mallacom.Mallacom import Mallacom
-from .Mallasim.Mallasim import Mallasim
-from .Fibra.Fibra import Fibra
+from VirtualSpinning.Mallacom.Mallacom import Mallacom
+from VirtualSpinning.Mallasim.Mallasim import Mallasim
+from VirtualSpinning.Fibra.Fibra import Fibra
+from VirtualSpinning import aux

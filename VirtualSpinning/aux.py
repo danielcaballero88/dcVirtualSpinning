@@ -7,9 +7,21 @@ es una mezcla que resulta util tener por separado """
 import numpy as np
 from scipy import stats
 from itertools import product
+from matplotlib import pyplot as plt
 
 
 PI = np.pi
+
+
+def preset_rc(small=12, medium=20, big=24):
+    """ preset rcParams to get figures formtted quickly """
+    plt.rc('font', size=small)          # controls default text sizes
+    plt.rc('axes', titlesize=small)     # fontsize of the axes title
+    plt.rc('axes', labelsize=big)       # fontsize of the x and y labels
+    plt.rc('xtick', labelsize=big)      # fontsize of the tick labels
+    plt.rc('ytick', labelsize=big)      # fontsize of the tick labels
+    plt.rc('legend', fontsize=medium)   # legend fontsize
+    plt.rc('figure', titlesize=big)     # fontsize of the figure title
 
 
 def dproduct(dic):
@@ -83,8 +95,8 @@ def readcols(file, header=False, indices=[0,1], delim=None):
         # Read data until end of file
         for line in f: 
             vals = [float(val) for val in line.split(delim)]
-            row = []
-            rows.append([vals[i] for i in indices])
+            row = [vals[i] for i in indices]
+            rows.append(row)
         # Parse rows into columns
         columns = [list(tuple_column) for tuple_column in zip(*rows)]
         # Done 
