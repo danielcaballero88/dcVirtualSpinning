@@ -48,7 +48,8 @@ class Mallacom(object):
 
     @classmethod
     def make_from_params(cls, params, names=None):
-        if names is None: names = [f'malla_{i:02d}' for i in range(len(params))]
+        if names is None: 
+            names = [f'malla_{i:02d}' for i in range(len(params))]
         mallas = [] 
         for i, param in enumerate(params): 
             malla = cls(**param, name=names[i]) 
