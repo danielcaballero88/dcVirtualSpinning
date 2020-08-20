@@ -1,7 +1,7 @@
 import numpy as np
-from VirtualSpinning.aux import iguales
-from VirtualSpinning.aux import calcular_angulo_de_segmento
-from VirtualSpinning.aux import append_to_keys
+from VirtualSpinning.Aux.aux import iguales
+from VirtualSpinning.Aux.aux import calcular_angulo_de_segmento
+from VirtualSpinning.Aux.aux import append_to_keys
 
 class Segmentos(object):
     """

@@ -1,6 +1,6 @@
 import math
 import numpy as np
-from VirtualSpinning.aux import find_string_in_file
+from VirtualSpinning.Aux.aux import find_string_in_file
 
 
 class Fibra(object):

@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 from pathlib import Path
 import time
 from VirtualSpinning.Mallacom.Mallacom import Mallacom
-from VirtualSpinning import odf
+from VirtualSpinning.Aux import odf
 
 
 CWD = Path.cwd()

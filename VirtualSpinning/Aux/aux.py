@@ -8,15 +8,17 @@ import numpy as np
 from scipy import stats
 from itertools import product
 from matplotlib import pyplot as plt
+from matplotlib import rcParams
 
 
 PI = np.pi
 
 
-def preset_rc(small=12, medium=20, big=24):
+def preset_rc(small=12, medium=20, big=24, autolayout=False):
     """ preset rcParams to get figures formtted quickly """
+    if autolayout: rcParams.update({'figure.autolayout': True})
     plt.rc('font', size=small)          # controls default text sizes
-    plt.rc('axes', titlesize=small)     # fontsize of the axes title
+    plt.rc('axes', titlesize=medium)     # fontsize of the axes title
     plt.rc('axes', labelsize=big)       # fontsize of the x and y labels
     plt.rc('xtick', labelsize=big)      # fontsize of the tick labels
     plt.rc('ytick', labelsize=big)      # fontsize of the tick labels
@@ -305,3 +307,4 @@ def compute_from_curve(x, xx, yy, extrapolar=False):
         if x < xx[i]:
             slope = (yy[i] - yy[i - 1]) / (xx[i] - xx[i - 1])
             return yy[i - 1] + slope * (x - xx[i - 1])
+            

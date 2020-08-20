@@ -10,11 +10,11 @@ from .Fibras import Fibras
 from .Segmentos import Segmentos
 from .Nodos import Nodos
 from .Marco import Marco
-from VirtualSpinning.aux import calcular_interseccion_entre_segmentos as calcular_interseccion
-from VirtualSpinning.aux import find_string_in_file
-from VirtualSpinning.aux import calcular_longitud_de_segmento
-from VirtualSpinning.aux import calcular_angulo_de_segmento
-from VirtualSpinning.aux import dproduct
+from VirtualSpinning.Aux.aux import calcular_interseccion_entre_segmentos as calcular_interseccion
+from VirtualSpinning.Aux.aux import find_string_in_file
+from VirtualSpinning.Aux.aux import calcular_longitud_de_segmento
+from VirtualSpinning.Aux.aux import calcular_angulo_de_segmento
+from VirtualSpinning.Aux.aux import dproduct
 
 
 MESH_PARAMS = ('L', 'D', 'vf', 'ls', 'dth', 'nc', 'fdo')
@@ -978,8 +978,12 @@ class Mallacom(object):
         elif cby == "angulo":
             # calculo las orientaciones
             cvar = self.__calc_orient()
-            if cvmin is None: cvmin = 0 
+            if cvmin is None: cvmin = 0. 
             if cvmax is None: cvmax = PI
+        elif cby == "random":
+            cvar = np.random.rand(self.fibs.num)
+            cvmin = 0.
+            cvmax = 1.
         elif cby == 'nada': 
             mi_cm = cm.get_cmap('gray')
             cvmin = 0

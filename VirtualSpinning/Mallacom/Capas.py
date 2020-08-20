@@ -1,4 +1,4 @@
-from VirtualSpinning.aux import append_to_keys
+from VirtualSpinning.Aux.aux import append_to_keys
 
 
 class Capas(object):

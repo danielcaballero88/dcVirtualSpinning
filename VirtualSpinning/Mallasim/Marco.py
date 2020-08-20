@@ -88,6 +88,22 @@ class Marco(object):
         else:
             return False
 
+    def check_puntos_fuera(self, r):
+        """
+        Args:
+            r: np.ndarray de posiciones
+        Result:
+            mask_out: tuple de mask arrays indicando True donde el nodo cae
+                      fuera del rve en el orden: bottom, right, top, left
+        """
+        x = r[:,0]
+        y = r[:,1]
+        mask_bottom = y < self.get_bottom() 
+        mask_right = x > self.get_right()
+        mask_top = y > self.get_top()
+        mask_left = x < self.get_left()
+        return mask_bottom, mask_right, mask_top, mask_left
+
     def deformar(self, Fmacro):
         # coordenadas deformadas
         self.nodes = np.matmul(self.nodes, np.transpose(Fmacro))

@@ -7,7 +7,7 @@ from matplotlib import cm
 from .Fibras import Fibras
 from .Nodos import Nodos
 from .Marco import Marco
-from VirtualSpinning.aux import find_string_in_file
+from VirtualSpinning.Aux.aux import find_string_in_file
 
 # Parameters
 DELTA = 1.e-4
@@ -163,6 +163,19 @@ class Mallasim(object):
             fid.write(dString)
         # ---
         fid.close()
+
+    def corr_outnods(self):
+        """
+        Method to correct the nodes that got out of the mesh back inside
+        This is not strictly necessary, those nodes are not in violation of any
+        condition, but they look ugly in the plot.
+        """
+        mb, mr, mt, ml = self.marco.check_puntos_fuera(self.nodos.r)
+        self.nodos.r[mb,1] = self.marco.get_bottom() 
+        self.nodos.r[mr,0] = self.marco.get_right() 
+        self.nodos.r[mt,1] = self.marco.get_top() 
+        self.nodos.r[ml,0] = self.marco.get_left()
+        
 
     def pre_graficar_bordes(self, fig, ax, limites={}):
         # deformacion afin del borde
@@ -324,7 +337,7 @@ class Mallasim(object):
             if plot_inic: 
                 x0, y0 = rinic[n0]
                 x1, y1 = rinic[n1]
-                ax.plot([x0, x1], [y0, y1], **parplotinic)
+                ax.plot([x0, x1], [y0, y1], zorder=1, **parplotinic)
 
             # Grafico configuracion afin (para comparar)
             if plot_afin:
@@ -333,7 +346,7 @@ class Mallasim(object):
                 # algunos defaults
                 parplotafin['c'] = parplotafin.get('c', 'gray')
                 parplotafin['ls'] = parplotafin.get('ls', ':')
-                ax.plot([x0, x1], [y0, y1], **parplotafin)
+                ax.plot([x0, x1], [y0, y1], zorder=2, **parplotafin)
             
             # Grafico configuracion deformada
             x0, y0 = self.nodos.r[n0]
@@ -349,7 +362,7 @@ class Mallasim(object):
                     c = "k"
             # --
             # La agrego al plot
-            ax.plot([x0, x1], [y0, y1], c=c, **parplot)
+            ax.plot([x0, x1], [y0, y1], c=c, zorder=cvar[f], **parplot)
         print()
 
         # Agrego la colorbar si asi lo quise
