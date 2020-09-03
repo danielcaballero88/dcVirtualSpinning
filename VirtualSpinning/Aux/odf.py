@@ -105,12 +105,13 @@ class Rand(DiscrDistr):
 class NormTr(DiscrDistr):
     def __init__(self, n=BIGNUM, loc=0., scale=1., lower=-10., upper=10.):
         super().__init__(n, lower, upper)
-        # Los valores que tengo que pasar al metodo de scipy no son exactamente lower y upper
         self.loc = loc
         self.scale = scale
-        self.lowernt = (lower - loc) / scale
-        self.uppernt = (upper - loc) / scale
-        self.x = stats.truncnorm.rvs(self.lowernt, self.uppernt, loc=loc, scale=scale, size=self.n)
+        # Los valores que tengo que pasar al metodo truncnorm de scipy 
+        # no son exactamente lower y upper:
+        self.a = (lower - loc) / scale
+        self.b = (upper - loc) / scale
+        self.x = stats.truncnorm.rvs(self.a, self.b, loc=loc, scale=scale, size=self.n)
 
 
 class Vals(object):

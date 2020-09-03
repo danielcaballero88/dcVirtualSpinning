@@ -1,7 +1,10 @@
 from setuptools import setup
+import os 
+
+here = os.path.abspath(".")
 
 # Get the long description from the README file
-with open(path.join(here, 'README.md'), encoding='utf-8') as f:
+with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
@@ -38,6 +41,6 @@ setup(
     ],
     keywords='multiscale simulation',
     packages=['VirtualSpinning'], # se podria hacer = find_packages()
-    python_requires='>3.6'
+    python_requires='>3.6',
     license='MIT',
 )
