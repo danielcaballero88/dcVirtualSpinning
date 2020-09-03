@@ -1,7 +1,7 @@
 from setuptools import setup
 import os 
 
-here = os.path.abspath(".")
+here = os.path.dirname(".")
 
 # Get the long description from the README file
 with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
