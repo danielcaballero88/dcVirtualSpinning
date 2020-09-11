@@ -9,100 +9,100 @@ from VirtualSpinning.Mallasim.Mallasim import Mallasim
 FMT_INT = "10d"
 FMT_FLT = "+17.8e"
 
-def write_mesh(ms, mf): 
+def write_mesh(ms, Meshfile): 
     # ---
     # Write Header Data
-    mf.write("*NODAL DOFs\n")
-    idoft = 2
-    mf.write(f"{idoft:{FMT_INT}}\n\n")
-    mf.write("*DIMEN\n")
+    Meshfile.write("*NODAL DOFs\n")
+    idoft = 4
+    Meshfile.write(f"{idoft:{FMT_INT}}\n\n")
+    Meshfile.write("*DIMEN\n")
     ndim = 2
-    mf.write(f"{ndim:{FMT_INT}}\n\n")
+    Meshfile.write(f"{ndim:{FMT_INT}}\n\n")
     # ---
     # Write Coordinates
-    mf.write("*COORDINATES\n")
-    mf.write(f"{ms.nodos.n:{FMT_INT}}\n\n")
+    Meshfile.write("*COORDINATES\n")
+    Meshfile.write(f"{ms.nodos.n:{FMT_INT}}\n\n")
     for i in range(ms.nodos.n): 
         r = ms.nodos.r0[i]
         linea = "".join([f"{v:{FMT_FLT}}" for v in r]) + "\n"
-        mf.write(linea)
-    mf.write("\n")
+        Meshfile.write(linea)
+    Meshfile.write("\n")
     # ---
     # Write Groups
-    mf.write("*ELEMENT GROUPS\n")
+    Meshfile.write("*ELEMENT GROUPS\n")
     # header
     ngroups = 1
-    mf.write(f"{ngroups:{FMT_INT}}\n\n")
+    Meshfile.write(f"{ngroups:{FMT_INT}}\n\n")
     ifirst = 1
     ilast = ms.fibras.n + ms.nodos.mf.sum()
-    mf.write(f"{ifirst:{FMT_INT}}{ilast:{FMT_INT}}{'Generic':>10s}\n\n")
+    Meshfile.write(f"{ifirst:{FMT_INT}}{ilast:{FMT_INT}}{'Generic':>10s}\n\n")
     # groups of fibers
     nodel = 2
     for i in range(ms.fibras.n): 
-        mf.write(f"{nodel:{FMT_INT}}\n")
-    mf.write("\n")
+        Meshfile.write(f"{nodel:{FMT_INT}}\n")
+    Meshfile.write("\n")
     # groups of border nodes (dirichlet nodes)
     nodel = 1
     numbornods = ms.nodos.mf.sum()
     for i in range(numbornods): 
-        mf.write(f"{nodel:{FMT_INT}}\n")
-    mf.write("\n")
+        Meshfile.write(f"{nodel:{FMT_INT}}\n")
+    Meshfile.write("\n")
     # ---
     # Write Incidence 
-    mf.write("*INCIDENCE\n\n")
+    Meshfile.write("*INCIDENCE\n\n")
     # fibras 
     for i in range(ms.fibras.n): 
         n0, n1 = ms.fibras.con[i]
-        mf.write("".join([f"{v:{FMT_INT}}" for v in (n0+1,n1+1)]) + "\n")
-    mf.write("\n")
+        Meshfile.write("".join([f"{v:{FMT_INT}}" for v in (n0+1,n1+1)]) + "\n")
+    Meshfile.write("\n")
     # nodos frontera (dirichlet)
     all_inods = np.arange(ms.nodos.n) + 1
     bor_inods = all_inods[ms.nodos.mf]
     for inod in bor_inods: 
-        mf.write(f"{inod:{FMT_INT}}\n")
-    mf.write("\n")
+        Meshfile.write(f"{inod:{FMT_INT}}\n")
+    Meshfile.write("\n")
     # ---
     # Write Element Type
-    mf.write("*ELEMENT TYPE\n\n")
+    Meshfile.write("*ELEMENT TYPE\n\n")
     # fibers
     tipo = 1
     for i in range(ms.fibras.n): 
-        mf.write(f"{tipo:{FMT_INT}}\n")
-    mf.write("\n")
+        Meshfile.write(f"{tipo:{FMT_INT}}\n")
+    Meshfile.write("\n")
     # border nodes (dirichlet nodes)
     tipo = 2
     numbornods = ms.nodos.mf.sum()
     for i in range(numbornods): 
-        mf.write(f"{tipo:{FMT_INT}}\n")
-    mf.write("\n")
+        Meshfile.write(f"{tipo:{FMT_INT}}\n")
+    Meshfile.write("\n")
     # --- 
     # Write Element Mat
-    mf.write("*ELEMENT MAT\n\n")
+    Meshfile.write("*ELEMENT MAT\n\n")
     # fibers
     for i in range(ms.fibras.n): 
-        mf.write(f"{i+1:{FMT_INT}}\n")
-    mf.write("\n")
-    # border nodes (dirichlet nodes)
+        Meshfile.write(f"{i+1:{FMT_INT}}\n")
+    Meshfile.write("\n")
+    # border nodes (dirichlet nodes, one group for all)
     numbornods = ms.nodos.mf.sum()
+    j = ms.fibras.n + i + 1
     for i in range(numbornods): 
-        j = ms.fibras.n + i + 1
-        mf.write(f"{j:{FMT_INT}}\n")
-    mf.write("\n")
+        Meshfile.write(f"{j:{FMT_INT}}\n")
+    Meshfile.write("\n")
     # dirichlet conditions (not given here at the moment)
-    mD = np.array([0, 0], dtype=int)
-    uD = np.array([0., 0.], dtype=float)
+    maskD = np.array([0, 0, 0, 0], dtype=int)
+    valsD = np.array([0., 0., 0., 0.], dtype=float)
     # ---
     # Write Dirichlet Conditions
-    mf.write("*DIRICHLET CONDITIONS\n\n")
-    for i in range(ms.nodos.n): 
-        mf.write("".join([f"{v:{FMT_INT}}" for v in mD]) + "\n")
-    mf.write("\n")
-    for i in range(ms.nodos.n): 
-        mf.write("".join([f"{v:{FMT_FLT}}" for v in uD]) + "\n")
-    mf.write("\n")
+    Meshfile.write("*DIRICHLET CONDITIONS\n\n")
+    for i in range(ms.nodos.n * 2): 
+        Meshfile.write("".join([f"{v:{FMT_INT}}" for v in maskD]) + "\n")
+    Meshfile.write("\n")
+    for i in range(ms.nodos.n * 2): 
+        Meshfile.write("".join([f"{v:{FMT_FLT}}" for v in valsD]) + "\n")
+    Meshfile.write("\n")
     # --- 
     # Done
-    mf.write("*END")
+    Meshfile.write("*END")
     return 0
     # ---
 
